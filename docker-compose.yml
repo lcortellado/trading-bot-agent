@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    container_name: crypto-bot-dev
+    working_dir: /workspace
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+    environment:
+      - TRADING_MODE=paper
+    stdin_open: true
+    tty: true

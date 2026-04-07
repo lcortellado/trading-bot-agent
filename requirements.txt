@@ -1,0 +1,33 @@
+# Web framework
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# Validation & settings
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+
+# HTTP client (exchange API calls)
+httpx>=0.27.0
+
+# Data processing (SMA and future backtesting)
+# NOTE: TA-Lib was excluded — requires compiled C libs that complicate Docker.
+# SMAs are implemented with pandas rolling mean. Additional indicators can be
+# added as needed using pandas-ta (pure Python) or custom numpy logic.
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Database (async, for future persistence layer)
+sqlalchemy>=2.0.0
+aiosqlite>=0.20.0
+alembic>=1.13.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# Code quality
+ruff>=0.4.0
+mypy>=1.9.0
