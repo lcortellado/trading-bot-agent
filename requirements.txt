@@ -21,6 +21,9 @@ sqlalchemy>=2.0.0
 aiosqlite>=0.20.0
 alembic>=1.13.0
 
+# AI agent (Claude API for trading decision synthesis)
+anthropic>=0.40.0
+
 # Environment
 python-dotenv>=1.0.0
 

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        populate_by_name=True,  # allow kwargs by Python field name even when alias is set
     )
 
     # App
@@ -46,6 +47,16 @@ class Settings(BaseSettings):
 
     # Paper trading virtual capital
     paper_initial_capital: float = 10_000.0
+
+    # AI agent (Claude API)
+    # Leave empty to disable AI decisions — fallback will always return SKIP
+    ai_api_key: str = Field(default="", alias="AI_API_KEY")
+    ai_model: str = "claude-haiku-4-5-20251001"   # fast & cheap for trading synthesis
+    ai_timeout: int = 15                            # seconds; keep short to avoid blocking orders
+    ai_enabled: bool = True                         # set False to bypass AI and use risk-only mode
+
+    # Position monitor
+    position_monitor_interval: int = 30            # seconds between SL/TP checks
 
 
 @lru_cache

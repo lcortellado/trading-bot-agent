@@ -43,6 +43,20 @@ class SignalService:
         self._daily_pnl: Decimal = Decimal("0")
         self._capital: Decimal = Decimal(str(settings.paper_initial_capital))
 
+    # ── Read-only accessors (used by AgentService and PositionMonitor) ─────────
+
+    @property
+    def open_positions(self) -> list[Position]:
+        return self._open_positions
+
+    @property
+    def capital(self) -> Decimal:
+        return self._capital
+
+    @property
+    def daily_pnl(self) -> Decimal:
+        return self._daily_pnl
+
     async def process_signal(self, request: SignalRequest) -> SignalResponse:
         """Main entry point for signal processing."""
         signal = self._to_domain_signal(request)
@@ -71,6 +85,21 @@ class SignalService:
             reason=risk_result.reason,
             risk_check_passed=True,
             order_id=order.order_id,
+        )
+
+    async def close_position(self, position: Position, realized_pnl: Decimal) -> None:
+        """
+        Remove a position from open tracking and update daily PnL.
+        Called by PositionMonitor when SL/TP is hit.
+        Future: swap list mutation for a repository call.
+        """
+        self._open_positions = [p for p in self._open_positions if p is not position]
+        self._daily_pnl += realized_pnl
+        log.info(
+            "Position closed | symbol=%s | realized_pnl=%s | daily_pnl=%s",
+            position.symbol,
+            realized_pnl,
+            self._daily_pnl,
         )
 
     async def run_strategy_signal(
@@ -113,4 +142,14 @@ class SignalService:
             signal.symbol,
             risk.suggested_quantity,
         )
+        # Track the opened position (in-memory; future: persist via repository)
+        position = Position(
+            symbol=signal.symbol,
+            side=side,
+            entry_price=signal.price,
+            quantity=risk.suggested_quantity,  # type: ignore[arg-type]
+            stop_loss=risk.stop_loss,
+            take_profit=risk.take_profit,
+        )
+        self._open_positions.append(position)
         return order
