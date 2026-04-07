@@ -44,9 +44,34 @@ body {
   font-weight: 600;
 }
 
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+
+.nav-link {
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-decoration: none;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+.nav-link:hover {
+  color: var(--text);
+}
+
+.nav-link.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 .app-header .meta {
   color: var(--muted);
   font-size: 0.85rem;
+  margin-left: auto;
 }
 
 .app-header a {
@@ -245,6 +270,11 @@ table.feed th {
   color: #ffa657;
 }
 
+.kind-auto {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+}
+
 .kind-strategy {
   background: #2d2a3d;
   color: #d2a8ff;
@@ -262,8 +292,44 @@ table.feed th {
 
 .empty {
   color: var(--muted);
-  padding: 2rem;
-  text-align: center;
+  padding: 1rem 0;
+  text-align: left;
+  max-width: 40rem;
+  line-height: 1.5;
+}
+
+.feed-empty-wrap {
+  padding: 0.5rem 0 1rem;
+}
+
+.feed-hints {
+  margin: 0.75rem 0 1rem;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  max-width: 42rem;
+}
+
+.feed-hints code {
+  font-size: 0.8em;
+  background: var(--panel);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.feed-toolbar {
+  margin-bottom: 0.5rem;
+}
+
+.btn-small {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.feed-retry {
+  margin-top: 0.75rem;
 }
 
 .app-footer {
@@ -288,4 +354,60 @@ table.feed th {
 .positions-mini ul {
   margin: 0.35rem 0 0;
   padding-left: 1.2rem;
+}
+
+.config-layout .config-intro {
+  color: var(--muted);
+  font-size: 0.875rem;
+  max-width: 52rem;
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+.config-layout .config-intro code {
+  font-size: 0.8em;
+  background: var(--panel);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.config-sections {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 720px) {
+  .config-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+table.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+table.config-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 0.35rem 0.75rem 0.35rem 0;
+  vertical-align: top;
+  width: 55%;
+}
+
+table.config-table td {
+  padding: 0.35rem 0;
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+table.config-table tr {
+  border-bottom: 1px solid var(--border);
+}
+
+table.config-table tr:last-child {
+  border-bottom: none;
 }

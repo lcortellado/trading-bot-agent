@@ -35,6 +35,23 @@ def test_dashboard_snapshot() -> None:
         assert data["positions"] == []
 
 
+def test_dashboard_public_config_no_secrets() -> None:
+    """GET /api/dashboard/config returns safe fields only (no API key strings)."""
+    with TestClient(app) as client:
+        r = client.get("/api/dashboard/config")
+        assert r.status_code == 200
+        raw = r.text.lower()
+        assert "sk-" not in raw  # typical key prefix should not appear
+        data = r.json()
+        assert "api_key" not in data
+        assert "secret" not in data
+        assert data["app_name"]
+        assert "trading_mode" in data
+        assert "auto_trading_enabled" in data
+        assert isinstance(data["ai_anthropic_key_configured"], bool)
+        assert isinstance(data["ai_openai_key_configured"], bool)
+
+
 def test_signal_post_appends_dashboard_event() -> None:
     with TestClient(app) as client:
         body = {

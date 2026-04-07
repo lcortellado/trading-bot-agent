@@ -191,6 +191,21 @@ When a stop-loss or take-profit level is hit, it places a MARKET close order
 
 To adjust the check frequency: set `POSITION_MONITOR_INTERVAL=<seconds>` in `.env`.
 
+## Automatic trading loop
+
+When `AUTO_TRADING_ENABLED=true`, a background task runs every
+`AUTO_TRADING_INTERVAL_SECONDS` (minimum 30). For each symbol in `AUTO_TRADING_SYMBOLS`
+(comma-separated), it loads candles (`AUTO_TRADING_TIMEFRAME`, `AUTO_TRADING_CANDLE_LIMIT`),
+runs every strategy listed in `AUTO_TRADING_STRATEGIES`, picks the strongest BUY/SELL signal,
+then either sends the bundle to the AI (`AUTO_TRADING_USE_AI=true`, same as `POST /agent/decide`)
+or applies the strongest signal directly through the risk layer (`AUTO_TRADING_USE_AI=false`).
+
+- `AUTO_TRADING_SKIP_IF_OPEN=true` skips symbols that already have an open position.
+- `AUTO_TRADING_COOLDOWN_SECONDS` enforces a per-symbol quiet period after a successful auto order.
+
+This remains **paper or testnet only** — controlled by `TRADING_MODE` like the rest of the app.
+Restart the API after changing these variables (`get_settings()` is cached per process).
+
 ## Running Tests
 
 ```bash

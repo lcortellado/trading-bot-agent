@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchSnapshot } from '../api/dashboardApi'
 import type { DashboardSnapshot } from '../types/api'
+import { AppHeader } from '../components/AppHeader'
 import { StatsBar } from '../components/StatsBar'
 import { EventFeed } from '../components/EventFeed'
 import { SignalForm } from '../components/SignalForm'
@@ -9,6 +10,7 @@ import { StrategyForm } from '../components/StrategyForm'
 
 export function DashboardPage() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
+  const [feedRefreshToken, setFeedRefreshToken] = useState(0)
   const refreshSnapshot = useCallback(() => {
     fetchSnapshot()
       .then(setSnapshot)
@@ -23,19 +25,12 @@ export function DashboardPage() {
 
   const onAction = useCallback(() => {
     refreshSnapshot()
+    setFeedRefreshToken((n) => n + 1)
   }, [refreshSnapshot])
 
   return (
     <>
-      <header className="app-header">
-        <h1>Crypto trading bot</h1>
-        <span className="meta">
-          Paper / testnet ·{' '}
-          <a href="/docs" target="_blank" rel="noreferrer">
-            API docs
-          </a>
-        </span>
-      </header>
+      <AppHeader />
 
       <StatsBar snapshot={snapshot} />
 
@@ -51,7 +46,7 @@ export function DashboardPage() {
 
         <section className="block">
           <h2>Actividad reciente</h2>
-          <EventFeed />
+          <EventFeed refreshToken={feedRefreshToken} />
         </section>
       </main>
 

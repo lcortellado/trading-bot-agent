@@ -64,6 +64,24 @@ class Settings(BaseSettings):
     # Dashboard (in-memory event feed)
     dashboard_max_events: int = Field(default=500, alias="DASHBOARD_MAX_EVENTS")
 
+    # Automated trading loop (3Commas-style: periodic scan → signals → AI (optional) → risk → order)
+    auto_trading_enabled: bool = Field(default=False, alias="AUTO_TRADING_ENABLED")
+    auto_trading_interval_seconds: int = Field(default=300, ge=30, alias="AUTO_TRADING_INTERVAL_SECONDS")
+    auto_trading_symbols: str = Field(default="BTCUSDT", alias="AUTO_TRADING_SYMBOLS")
+    auto_trading_timeframe: str = Field(default="1h", alias="AUTO_TRADING_TIMEFRAME")
+    auto_trading_strategy_names: str = Field(
+        default="sma_crossover",
+        alias="AUTO_TRADING_STRATEGIES",
+    )
+    auto_trading_use_ai: bool = Field(default=True, alias="AUTO_TRADING_USE_AI")
+    auto_trading_skip_if_open: bool = Field(default=True, alias="AUTO_TRADING_SKIP_IF_OPEN")
+    auto_trading_cooldown_seconds: int = Field(
+        default=3600,
+        ge=0,
+        alias="AUTO_TRADING_COOLDOWN_SECONDS",
+    )
+    auto_trading_candle_limit: int = Field(default=120, ge=30, alias="AUTO_TRADING_CANDLE_LIMIT")
+
 
 @lru_cache
 def get_settings() -> Settings:

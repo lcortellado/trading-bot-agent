@@ -21,8 +21,11 @@ from app.core.logging import configure_logging, get_logger
 from app.dashboard.event_store import DashboardEventStore
 from app.exchange.binance import BinanceClient
 from app.risk_management.risk_manager import RiskManager
+from app.services.auto_trading import AutoTradingLoop
+from app.services.market_data import MarketDataService
 from app.services.position_monitor import PositionMonitor
 from app.services.signal_service import SignalService
+from app.strategies.sma_crossover import get_available_strategies
 
 log = get_logger(__name__)
 
@@ -57,6 +60,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
     monitor_task = asyncio.create_task(monitor.run())
 
+    auto_trading_task: asyncio.Task[None] | None = None
+    if settings.auto_trading_enabled:
+        market_data = MarketDataService(exchange)
+        strategies = get_available_strategies()
+        auto_loop = AutoTradingLoop(
+            settings=settings,
+            market_data=market_data,
+            strategies=strategies,
+            agent_service=agent_service,
+            signal_service=signal_service,
+            event_store=event_store,
+        )
+        auto_trading_task = asyncio.create_task(auto_loop.run())
+        log.info(
+            "Auto-trading loop enabled | interval=%ds | symbols=%s | strategies=%s",
+            settings.auto_trading_interval_seconds,
+            settings.auto_trading_symbols,
+            settings.auto_trading_strategy_names,
+        )
+
     ai_on = False
     if settings.ai_enabled:
         if settings.ai_provider.strip().lower() == "openai":
@@ -85,6 +108,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await monitor_task
     except asyncio.CancelledError:
         pass
+    if auto_trading_task is not None:
+        auto_trading_task.cancel()
+        try:
+            await auto_trading_task
+        except asyncio.CancelledError:
+            pass
     await exchange.close()
     log.info("Shutting down %s", settings.app_name)
 

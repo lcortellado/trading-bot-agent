@@ -13,6 +13,10 @@ def make_settings(**overrides) -> Settings:
         trading_mode=TradingMode.PAPER,
         binance_api_key="test_key",
         binance_secret_key="test_secret",
+        # Isolate tests from developer .env — otherwise AI/Binance keys enable real clients
+        ai_api_key="",
+        openai_api_key="",
+        ai_provider="anthropic",
         paper_initial_capital=10_000.0,
         max_position_size_pct=0.02,
         max_open_positions=5,
