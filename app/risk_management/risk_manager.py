@@ -97,9 +97,12 @@ class RiskManager:
                 decision_log.skip(signal.symbol, reason, drawdown_pct=f"{drawdown_pct:.2%}")
                 return RiskCheckResult(approved=False, reason=reason)
 
-        # 5. Position sizing
+        # 5. Position sizing (direction-aware SL/TP; size_multiplier from signal / API)
         quantity, stop_loss, take_profit = self._calculate_position(
-            signal.price, available_capital
+            signal.price,
+            available_capital,
+            signal.action,
+            signal.size_multiplier,
         )
 
         if quantity <= 0:
@@ -129,14 +132,23 @@ class RiskManager:
         self,
         price: Decimal,
         available_capital: Decimal,
+        action: SignalAction,
+        size_multiplier: float,
     ) -> tuple[Decimal, Decimal, Decimal]:
-        """Fixed fractional position sizing."""
-        max_notional = available_capital * Decimal(str(self._s.max_position_size_pct))
+        """Fixed fractional sizing; SL/TP flipped for shorts (SELL)."""
+        pct = Decimal(str(self._s.max_position_size_pct)) * Decimal(str(size_multiplier))
+        max_notional = available_capital * pct
         quantity = (max_notional / price).quantize(Decimal("0.00001"))
 
         sl_distance = price * Decimal(str(self._s.default_stop_loss_pct))
         tp_distance = price * Decimal(str(self._s.default_take_profit_pct))
-        stop_loss = (price - sl_distance).quantize(Decimal("0.01"))
-        take_profit = (price + tp_distance).quantize(Decimal("0.01"))
+
+        if action == SignalAction.BUY:
+            stop_loss = (price - sl_distance).quantize(Decimal("0.01"))
+            take_profit = (price + tp_distance).quantize(Decimal("0.01"))
+        else:
+            # Short: stop above entry, take-profit below
+            stop_loss = (price + sl_distance).quantize(Decimal("0.01"))
+            take_profit = (price - tp_distance).quantize(Decimal("0.01"))
 
         return quantity, stop_loss, take_profit

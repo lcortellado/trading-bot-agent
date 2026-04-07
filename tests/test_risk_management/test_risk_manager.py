@@ -14,6 +14,7 @@ def make_signal(
     confidence: float = 0.75,
     reason: str = "test signal",
     price: float = 50_000.0,
+    size_multiplier: float = 1.0,
 ) -> Signal:
     return Signal(
         symbol="BTCUSDT",
@@ -23,6 +24,7 @@ def make_signal(
         confidence=confidence,
         reason=reason,
         price=Decimal(str(price)),
+        size_multiplier=size_multiplier,
         timestamp=datetime.now(tz=timezone.utc),
     )
 
@@ -102,3 +104,20 @@ def test_take_profit_above_entry(risk_manager: RiskManager) -> None:
     signal = make_signal(price=50_000.0, confidence=0.8)
     result = risk_manager.evaluate(signal, Decimal("10000"), [], Decimal("0"))
     assert result.take_profit > signal.price
+
+
+def test_short_stop_loss_above_entry(risk_manager: RiskManager) -> None:
+    signal = make_signal(action=SignalAction.SELL, price=50_000.0, confidence=0.8)
+    result = risk_manager.evaluate(signal, Decimal("10000"), [], Decimal("0"))
+    assert result.approved
+    assert result.stop_loss is not None and result.stop_loss > signal.price
+    assert result.take_profit is not None and result.take_profit < signal.price
+
+
+def test_size_multiplier_reduces_quantity(risk_manager: RiskManager) -> None:
+    full = make_signal(price=50_000.0, confidence=0.8, size_multiplier=1.0)
+    half = make_signal(price=50_000.0, confidence=0.8, size_multiplier=0.5)
+    r_full = risk_manager.evaluate(full, Decimal("10000"), [], Decimal("0"))
+    r_half = risk_manager.evaluate(half, Decimal("10000"), [], Decimal("0"))
+    assert r_full.approved and r_half.approved
+    assert r_half.suggested_quantity == r_full.suggested_quantity * Decimal("0.5")

@@ -43,6 +43,7 @@ class Signal:
     confidence: float          # 0.0 – 1.0
     reason: str                # Why enter or skip — mandatory
     price: Decimal
+    size_multiplier: float = 1.0  # scales max notional in RiskManager (e.g. AI REDUCE_SIZE)
     timestamp: datetime = field(default_factory=datetime.utcnow)
     metadata: dict = field(default_factory=dict)
 
@@ -51,6 +52,10 @@ class Signal:
             raise ValueError(f"confidence must be between 0 and 1, got {self.confidence}")
         if not self.reason:
             raise ValueError("Signal must include a reason explaining the decision")
+        if not (0.0 < self.size_multiplier <= 1.0):
+            raise ValueError(
+                f"size_multiplier must be in (0, 1], got {self.size_multiplier}"
+            )
 
 
 @dataclass

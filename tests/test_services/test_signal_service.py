@@ -99,3 +99,28 @@ async def test_symbol_is_uppercased(service: SignalService) -> None:
     )
     response = await service.process_signal(req)
     assert response.symbol == "BTCUSDT"
+
+
+@pytest.mark.asyncio
+async def test_capital_reserved_on_fill_and_restored_on_close(service: SignalService) -> None:
+    """Opening locks notional; closing returns locked amount plus realized PnL."""
+    assert service.capital == Decimal("10000")
+    req = SignalRequest(
+        symbol="BTCUSDT",
+        timeframe=Timeframe.H1,
+        action=SignalAction.BUY,
+        strategy_name="test",
+        confidence=0.8,
+        reason="Golden cross detected",
+        price=Decimal("50000"),
+    )
+    await service.process_signal(req)
+    locked = Decimal("50000") * Decimal("0.004")
+    assert service.capital == Decimal("10000") - locked
+    assert len(service.open_positions) == 1
+    pos = service.open_positions[0]
+    pnl = Decimal("25.5")
+    await service.close_position(pos, pnl)
+    assert service.capital == Decimal("10000") - locked + pos.entry_price * pos.quantity + pnl
+    assert service.daily_pnl == pnl
+    assert len(service.open_positions) == 0

@@ -11,7 +11,11 @@ import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
-from app.agents.agent_service import AgentService, REDUCE_CONFIDENCE_FACTOR
+from app.agents.agent_service import (
+    AgentService,
+    REDUCE_CONFIDENCE_FACTOR,
+    REDUCE_SIZE_MULTIPLIER,
+)
 from app.agents.ai_client import AIDecisionClient
 from app.agents.schemas import AgentDecision, AgentOutput
 from app.domain.enums import OrderSide, OrderStatus, OrderType, SignalAction, Timeframe, TradingMode
@@ -122,8 +126,8 @@ async def test_agent_enter_risk_rejected_no_order() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reduce_size_scales_confidence() -> None:
-    """REDUCE_SIZE: the signal forwarded to SignalService has scaled-down confidence."""
+async def test_reduce_size_scales_confidence_and_size() -> None:
+    """REDUCE_SIZE: scaled confidence and reduced size_multiplier on forwarded signal."""
     settings = make_settings()
     original_confidence = 0.8
     ai_client = make_mock_ai_client(AgentDecision.REDUCE_SIZE, confidence=original_confidence)
@@ -136,6 +140,7 @@ async def test_reduce_size_scales_confidence() -> None:
     forwarded_request: SignalRequest = call_args[0][0]
     expected_confidence = round(original_confidence * REDUCE_CONFIDENCE_FACTOR, 4)
     assert forwarded_request.confidence == pytest.approx(expected_confidence)
+    assert forwarded_request.size_multiplier == pytest.approx(REDUCE_SIZE_MULTIPLIER)
 
 
 @pytest.mark.asyncio

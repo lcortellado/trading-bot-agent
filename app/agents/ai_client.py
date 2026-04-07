@@ -87,7 +87,10 @@ class AIDecisionClient:
         # ImportError is caught by the except clause in decide().
         import anthropic  # noqa: PLC0415
 
-        client = anthropic.AsyncAnthropic(api_key=self._settings.ai_api_key)
+        client = anthropic.AsyncAnthropic(
+            api_key=self._settings.ai_api_key,
+            timeout=self._settings.ai_timeout,
+        )
         user_content = _USER_TEMPLATE.format(
             input_json=agent_input.model_dump_json(indent=2)
         )

@@ -19,6 +19,12 @@ class SignalRequest(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     reason: str = Field(..., min_length=1, description="Why this signal was generated")
     price: Decimal = Field(..., gt=0)
+    size_multiplier: float = Field(
+        default=1.0,
+        ge=0.01,
+        le=1.0,
+        description="Scales max position notional from risk rules (1.0 = full size)",
+    )
     metadata: dict = Field(default_factory=dict)
 
     @field_validator("symbol")

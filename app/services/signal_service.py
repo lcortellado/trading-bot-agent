@@ -89,12 +89,14 @@ class SignalService:
 
     async def close_position(self, position: Position, realized_pnl: Decimal) -> None:
         """
-        Remove a position from open tracking and update daily PnL.
+        Remove a position from open tracking, update daily PnL, and restore locked notional.
         Called by PositionMonitor when SL/TP is hit.
         Future: swap list mutation for a repository call.
         """
         self._open_positions = [p for p in self._open_positions if p is not position]
         self._daily_pnl += realized_pnl
+        # Return margin/notional locked at entry plus realized PnL (≈ exit proceeds in USDT terms)
+        self._capital += position.entry_price * position.quantity + realized_pnl
         log.info(
             "Position closed | symbol=%s | realized_pnl=%s | daily_pnl=%s",
             position.symbol,
@@ -123,6 +125,7 @@ class SignalService:
             confidence=req.confidence,
             reason=req.reason,
             price=req.price,
+            size_multiplier=req.size_multiplier,
             metadata=req.metadata,
         )
 
@@ -152,4 +155,6 @@ class SignalService:
             take_profit=risk.take_profit,
         )
         self._open_positions.append(position)
+        locked = signal.price * risk.suggested_quantity  # type: ignore[operator]
+        self._capital -= locked
         return order

@@ -39,6 +39,8 @@ POST /agent/decide
                  └─ ExchangeClient (paper simulate or testnet order)
 ```
 
+`REDUCE_SIZE` halves the agent-forwarded `size_multiplier` (default `0.5`) while scaling confidence. `POST /signal` accepts optional `size_multiplier` (0.01–1.0) to scale notional. Open positions lock paper capital until close; shorts use SL above entry and TP below. Claude API calls honor `AI_TIMEOUT` (seconds).
+
 ## Quick Start
 
 ### 1. Clone and configure
