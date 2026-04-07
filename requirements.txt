@@ -1,7 +1,6 @@
 # Web framework
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
-
 # Validation & settings
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
@@ -21,8 +20,9 @@ sqlalchemy>=2.0.0
 aiosqlite>=0.20.0
 alembic>=1.13.0
 
-# AI agent (Claude API for trading decision synthesis)
+# AI agent (Claude and/or OpenAI for trading decision synthesis)
 anthropic>=0.40.0
+openai>=1.40.0
 
 # Environment
 python-dotenv>=1.0.0

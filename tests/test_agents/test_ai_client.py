@@ -48,7 +48,7 @@ async def test_decide_returns_skip_when_disabled() -> None:
     result = await client.decide(make_agent_input())
     assert result.decision == AgentDecision.SKIP
     assert result.confidence == 0.0
-    assert "AI_API_KEY" in result.reason
+    assert "API key" in result.reason or "not configured" in result.reason
 
 
 @pytest.mark.asyncio
@@ -61,6 +61,25 @@ async def test_decide_returns_skip_on_api_error() -> None:
 
     assert result.decision == AgentDecision.SKIP
     assert "RuntimeError" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_decide_openai_path_uses_call_openai() -> None:
+    settings = make_settings(
+        ai_provider="openai",
+        openai_api_key="sk-openai-test",
+        ai_enabled=True,
+    )
+    client = AIDecisionClient(settings)
+    expected = AgentOutput(
+        decision=AgentDecision.ENTER,
+        confidence=0.7,
+        reason="OpenAI path",
+    )
+    with patch.object(client, "_call_openai", AsyncMock(return_value=expected)):
+        result = await client.decide(make_agent_input())
+    assert result.decision == AgentDecision.ENTER
+    assert "OpenAI path" in result.reason
 
 
 @pytest.mark.asyncio

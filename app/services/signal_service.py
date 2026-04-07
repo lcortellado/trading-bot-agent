@@ -4,14 +4,18 @@ Signal service — orchestrates the full signal → risk check → order flow.
 This is the only service that touches both strategies and risk management.
 FastAPI routes call this service; they never call strategies or risk manager directly.
 """
+from __future__ import annotations
+
 from decimal import Decimal
 
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.domain.models import Order, Position, Signal
+from app.dashboard.event_store import DashboardEventStore
 from app.domain.enums import OrderSide, OrderType, SignalAction
 from app.exchange.base import ExchangeClient
 from app.risk_management.risk_manager import RiskManager, RiskCheckResult
+from app.schemas.dashboard import DashboardEventKind
 from app.schemas.signal import SignalRequest, SignalResponse
 from app.strategies.base import Strategy
 
@@ -34,10 +38,12 @@ class SignalService:
         exchange: ExchangeClient,
         risk_manager: RiskManager,
         settings: Settings,
+        event_store: DashboardEventStore | None = None,
     ) -> None:
         self._exchange = exchange
         self._risk = risk_manager
         self._settings = settings
+        self._event_store = event_store
         # In-memory state for paper trading (replace with DB repository later)
         self._open_positions: list[Position] = []
         self._daily_pnl: Decimal = Decimal("0")
@@ -68,17 +74,19 @@ class SignalService:
         )
 
         if not risk_result.approved:
-            return SignalResponse(
+            resp = SignalResponse(
                 accepted=False,
                 signal_action=signal.action,
                 symbol=signal.symbol,
                 reason=risk_result.reason,
                 risk_check_passed=False,
             )
+            await self._emit_signal_dashboard(request, resp)
+            return resp
 
         order = await self._place_order(signal, risk_result)
 
-        return SignalResponse(
+        resp = SignalResponse(
             accepted=True,
             signal_action=signal.action,
             symbol=signal.symbol,
@@ -86,6 +94,8 @@ class SignalService:
             risk_check_passed=True,
             order_id=order.order_id,
         )
+        await self._emit_signal_dashboard(request, resp)
+        return resp
 
     async def close_position(self, position: Position, realized_pnl: Decimal) -> None:
         """
@@ -158,3 +168,30 @@ class SignalService:
         locked = signal.price * risk.suggested_quantity  # type: ignore[operator]
         self._capital -= locked
         return order
+
+    async def _emit_signal_dashboard(
+        self, request: SignalRequest, response: SignalResponse
+    ) -> None:
+        if self._event_store is None:
+            return
+        src = "agent" if request.metadata.get("agent_decision") else "direct"
+        title = (
+            f"Risk OK · order {response.order_id}"
+            if response.accepted
+            else f"Risk rejected · {response.reason[:100]}"
+        )
+        await self._event_store.append_new(
+            kind=DashboardEventKind.SIGNAL,
+            symbol=response.symbol,
+            title=title,
+            detail={
+                "source": src,
+                "action": response.signal_action.value,
+                "strategy": request.strategy_name,
+                "confidence": request.confidence,
+                "size_multiplier": request.size_multiplier,
+                "risk_check_passed": response.risk_check_passed,
+                "reason": response.reason,
+                "order_id": response.order_id,
+            },
+        )

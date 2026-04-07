@@ -4,10 +4,11 @@ POST /strategy/run    — run a strategy against live market data and return the
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.api.deps import SettingsDep, get_market_data_service, get_strategies
 from app.domain.enums import Timeframe
+from app.schemas.dashboard import DashboardEventKind
 from app.schemas.strategy import RunStrategyRequest, RunStrategyResponse, StrategyListResponse, StrategyInfo
 from app.services.market_data import MarketDataService
 from app.strategies.base import Strategy
@@ -32,6 +33,7 @@ async def list_strategies(
 
 @router.post("/run", response_model=RunStrategyResponse)
 async def run_strategy(
+    request: Request,
     body: RunStrategyRequest,
     strategies: Annotated[dict[str, Strategy], Depends(get_strategies)],
     market_data: Annotated[MarketDataService, Depends(get_market_data_service)],
@@ -56,6 +58,19 @@ async def run_strategy(
         signal = strategy.generate_signal(candles)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+    store = getattr(request.app.state, "event_store", None)
+    if store is not None:
+        await store.append_new(
+            kind=DashboardEventKind.STRATEGY,
+            symbol=signal.symbol,
+            title=f"{signal.strategy_name} · {signal.action.value}",
+            detail={
+                "confidence": signal.confidence,
+                "reason": signal.reason,
+                "candles_analyzed": len(candles),
+            },
+        )
 
     return RunStrategyResponse(
         strategy_name=signal.strategy_name,

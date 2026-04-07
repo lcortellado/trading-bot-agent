@@ -1,0 +1,60 @@
+"""HTTP tests for dashboard routes (uses full app lifespan)."""
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+_FRONTEND_INDEX = (
+    Path(__file__).resolve().parent.parent.parent / "frontend" / "dist" / "index.html"
+)
+
+
+@pytest.mark.skipif(
+    not _FRONTEND_INDEX.is_file(),
+    reason="Run `cd frontend && npm run build` to enable SPA smoke test",
+)
+def test_dashboard_spa_served_when_dist_exists() -> None:
+    """Production: React build mounted at /dashboard."""
+    with TestClient(app) as client:
+        r = client.get("/dashboard/")
+        assert r.status_code == 200
+        assert "text/html" in r.headers.get("content-type", "")
+        assert "root" in r.text
+
+
+def test_dashboard_snapshot() -> None:
+    with TestClient(app) as client:
+        r = client.get("/api/dashboard/snapshot")
+        assert r.status_code == 200
+        data = r.json()
+        assert "capital" in data
+        assert "daily_pnl" in data
+        assert data["open_positions"] == 0
+        assert data["positions"] == []
+
+
+def test_signal_post_appends_dashboard_event() -> None:
+    with TestClient(app) as client:
+        body = {
+            "symbol": "BTCUSDT",
+            "timeframe": "1h",
+            "action": "buy",
+            "strategy_name": "manual_test",
+            "confidence": 0.85,
+            "reason": "Dashboard integration test",
+            "price": "50000",
+        }
+        sig = client.post("/signal", json=body)
+        assert sig.status_code == 202
+
+        ev = client.get("/api/dashboard/events?limit=10")
+        assert ev.status_code == 200
+        rows = ev.json()["events"]
+        assert len(rows) >= 1
+        latest = rows[0]
+        assert latest["kind"] == "signal"
+        assert latest["symbol"] == "BTCUSDT"
+        assert latest["detail"]["strategy"] == "manual_test"
+        assert latest["detail"]["confidence"] == 0.85

@@ -48,15 +48,21 @@ class Settings(BaseSettings):
     # Paper trading virtual capital
     paper_initial_capital: float = 10_000.0
 
-    # AI agent (Claude API)
-    # Leave empty to disable AI decisions — fallback will always return SKIP
+    # AI agent — Anthropic Claude and/or OpenAI (ChatGPT API)
+    # Set AI_PROVIDER=openai with OPENAI_API_KEY, or anthropic (default) with AI_API_KEY
+    ai_provider: str = Field(default="anthropic", alias="AI_PROVIDER")
     ai_api_key: str = Field(default="", alias="AI_API_KEY")
-    ai_model: str = "claude-haiku-4-5-20251001"   # fast & cheap for trading synthesis
+    ai_model: str = "claude-haiku-4-5-20251001"   # Anthropic model id
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
     ai_timeout: int = 15                            # seconds; keep short to avoid blocking orders
     ai_enabled: bool = True                         # set False to bypass AI and use risk-only mode
 
     # Position monitor
     position_monitor_interval: int = 30            # seconds between SL/TP checks
+
+    # Dashboard (in-memory event feed)
+    dashboard_max_events: int = Field(default=500, alias="DASHBOARD_MAX_EVENTS")
 
 
 @lru_cache

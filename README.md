@@ -5,6 +5,7 @@ A clean-architecture Python trading bot with paper trading, Binance Testnet supp
 ## Architecture
 
 ```
+frontend/               # React (Vite + TypeScript) — panel web; build → servido en /dashboard
 app/
 ├── core/               # Config (pydantic-settings) + structured logging
 ├── domain/             # Pure domain models and enums (no framework deps)
@@ -13,8 +14,10 @@ app/
 ├── strategies/         # Strategy interface + SMA Crossover implementation
 ├── risk_management/    # RiskManager — enforces capital protection rules
 ├── agents/             # AI decision layer: AIDecisionClient, AgentService, schemas
+├── dashboard/          # DashboardEventStore (in-memory ring buffer for /dashboard)
+├── templates/          # (reserved; web UI is React in frontend/)
 ├── services/           # Orchestration: MarketDataService, SignalService, PositionMonitor
-└── api/routes/         # FastAPI thin routes: /health /strategy /signal /agent
+└── api/routes/         # FastAPI routes: /health /strategy /signal /agent /dashboard
 ```
 
 **Key design decisions:**
@@ -56,15 +59,37 @@ cp .env.example .env
 docker compose up --build
 ```
 
-### 3. Run locally
+### 3. Run locally (API)
 
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-API available at: http://localhost:8000  
-Interactive docs: http://localhost:8000/docs
+API: http://localhost:8000 · Docs: http://localhost:8000/docs
+
+### 4. Web UI (React) — recomendado para desarrollo
+
+**Modo desarrollo** (Vite con proxy al API en :8000):
+
+```bash
+# Terminal 1
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2
+cd frontend && npm install && npm run dev
+```
+
+Abre **http://localhost:5173** — formularios para señal, agente IA y estrategia SMA.
+
+**Modo un solo servidor** (compilar y servir bajo `/dashboard`):
+
+```bash
+cd frontend && npm install && npm run build
+cd .. && uvicorn app.main:app --reload --port 8000
+```
+
+Abre **http://localhost:8000/dashboard/** (requiere `frontend/dist` generado por `npm run build`).
 
 ## API Endpoints
 
@@ -75,6 +100,9 @@ Interactive docs: http://localhost:8000/docs
 | POST | `/strategy/run` | Run a strategy on live market data |
 | POST | `/signal` | Submit a signal for risk evaluation + order |
 | POST | `/agent/decide` | Submit a multi-signal bundle to the AI agent |
+| GET | `/dashboard/` | SPA React (tras `npm run build` en `frontend/`) |
+| GET | `/api/dashboard/events` | JSON feed of recent decisions (in-memory ring buffer) |
+| GET | `/api/dashboard/snapshot` | Paper capital, daily PnL, open positions |
 
 ### Example: Run SMA Crossover on BTCUSDT
 
@@ -140,12 +168,19 @@ The response includes `agent_decision` (ENTER/SKIP/REDUCE_SIZE), `agent_reason`,
 ## Activating the AI agent
 
 1. Copy `.env.example` to `.env`.
-2. Set `AI_API_KEY=<your Anthropic key>` (get one at https://console.anthropic.com/).
-3. Optionally tune `AI_MODEL` (default: `claude-haiku-4-5-20251001`) and `AI_TIMEOUT` (default: 15 s).
-4. Call `POST /agent/decide` with a signal bundle.
 
-**Fallback behaviour**: if `AI_API_KEY` is empty or the API is unreachable, the agent
-automatically returns `SKIP` — no order is placed and capital is preserved.
+**Option A — ChatGPT (OpenAI API)**  
+2. Set `AI_PROVIDER=openai` and `OPENAI_API_KEY=<key>` from [platform.openai.com](https://platform.openai.com/api-keys).  
+3. Optionally set `OPENAI_MODEL` (default: `gpt-4o-mini`).
+
+**Option B — Claude (Anthropic)**  
+2. Set `AI_PROVIDER=anthropic` (or omit) and `AI_API_KEY=<key>` from [console.anthropic.com](https://console.anthropic.com/).  
+3. Optionally tune `AI_MODEL` (default: `claude-haiku-4-5-20251001`).
+
+Then call `POST /agent/decide` with a signal bundle. Tune `AI_TIMEOUT` (default: 15 s) if needed.
+
+**Fallback behaviour**: if the matching API key is empty or the API is unreachable, the agent
+returns `SKIP` — no order is placed and capital is preserved.
 
 ## Position monitoring
 

@@ -1,14 +1,12 @@
 """
-Claude API client for structured trading decisions.
+LLM clients for structured trading decisions (Anthropic Claude or OpenAI Chat Completions).
 
 Responsibilities:
-- Build a strict system prompt that forces JSON-only output.
-- Call Anthropic's messages API asynchronously.
-- Validate the response with Pydantic (AgentOutput).
-- On ANY failure (network, timeout, bad JSON, API error, missing SDK):
-  return a SKIP decision so the rest of the flow is never blocked.
+- Strict system prompt → JSON-only output matching AgentOutput.
+- Lazy imports so missing SDKs do not break startup for unused providers.
+- On ANY failure: return SKIP (never raises to callers).
 
-API key comes exclusively from Settings (env var AI_API_KEY).
+Keys: AI_API_KEY (Anthropic), OPENAI_API_KEY (OpenAI). Provider via AI_PROVIDER.
 """
 import json
 
@@ -50,27 +48,41 @@ Respond with JSON only."""
 
 class AIDecisionClient:
     """
-    Wraps Anthropic Claude for trading decisions.
+    Wraps Anthropic or OpenAI for trading decisions.
 
     Fallback contract: any failure → SKIP (never raises, never blocks orders).
     """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._enabled = bool(settings.ai_api_key) and settings.ai_enabled
-        if not self._enabled:
-            reason = (
-                "AI_ENABLED=false" if not settings.ai_enabled else "AI_API_KEY not set"
-            )
+        self._provider = settings.ai_provider.strip().lower()
+        self._enabled = self._compute_enabled()
+        if not self._enabled and settings.ai_enabled:
             log.warning(
-                "AI decisions disabled (%s) — all calls will return SKIP fallback", reason
+                "AI decisions disabled — check AI_PROVIDER and matching API key "
+                "(anthropic → AI_API_KEY, openai → OPENAI_API_KEY)"
             )
+
+    def _compute_enabled(self) -> bool:
+        if not self._settings.ai_enabled:
+            return False
+        if self._provider == "openai":
+            return bool(self._settings.openai_api_key)
+        if self._provider in ("anthropic", "claude"):
+            return bool(self._settings.ai_api_key)
+        log.error("Unknown AI_PROVIDER=%r — use anthropic or openai", self._provider)
+        return False
 
     async def decide(self, agent_input: AgentInput) -> AgentOutput:
         """Return an AgentOutput. Never raises — falls back to SKIP on any error."""
         if not self._enabled:
-            return _skip("AI decision client not configured — set AI_API_KEY to enable")
+            return _skip(
+                "AI not configured — set AI_PROVIDER and the matching API key "
+                "(OPENAI_API_KEY for openai, AI_API_KEY for anthropic)"
+            )
         try:
+            if self._provider == "openai":
+                return await self._call_openai(agent_input)
             return await self._call_claude(agent_input)
         except Exception as exc:  # noqa: BLE001
             log.error(
@@ -83,8 +95,6 @@ class AIDecisionClient:
             )
 
     async def _call_claude(self, agent_input: AgentInput) -> AgentOutput:
-        # Lazy import so a missing anthropic package doesn't break startup;
-        # ImportError is caught by the except clause in decide().
         import anthropic  # noqa: PLC0415
 
         client = anthropic.AsyncAnthropic(
@@ -101,18 +111,43 @@ class AIDecisionClient:
             messages=[{"role": "user", "content": user_content}],
         )
         raw = message.content[0].text.strip()
-        log.debug("AI raw response for %s: %s", agent_input.symbol, raw)
+        return _parse_and_log(agent_input.symbol, raw)
 
-        parsed = json.loads(raw)
-        output = AgentOutput.model_validate(parsed)
-        log.info(
-            "AI decision | symbol=%s | decision=%s | confidence=%.2f | reason=%s",
-            agent_input.symbol,
-            output.decision.value,
-            output.confidence,
-            output.reason,
+    async def _call_openai(self, agent_input: AgentInput) -> AgentOutput:
+        from openai import AsyncOpenAI  # noqa: PLC0415
+
+        client = AsyncOpenAI(
+            api_key=self._settings.openai_api_key,
+            timeout=self._settings.ai_timeout,
         )
-        return output
+        user_content = _USER_TEMPLATE.format(
+            input_json=agent_input.model_dump_json(indent=2)
+        )
+        response = await client.chat.completions.create(
+            model=self._settings.openai_model,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=256,
+        )
+        raw = (response.choices[0].message.content or "").strip()
+        return _parse_and_log(agent_input.symbol, raw)
+
+
+def _parse_and_log(symbol: str, raw: str) -> AgentOutput:
+    log.debug("AI raw response for %s: %s", symbol, raw)
+    parsed = json.loads(raw)
+    output = AgentOutput.model_validate(parsed)
+    log.info(
+        "AI decision | symbol=%s | decision=%s | confidence=%.2f | reason=%s",
+        symbol,
+        output.decision.value,
+        output.confidence,
+        output.reason,
+    )
+    return output
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

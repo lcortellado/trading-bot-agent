@@ -29,7 +29,9 @@ from app.agents.schemas import (
 )
 from app.core.config import Settings
 from app.core.logging import DecisionLogger, get_logger
+from app.dashboard.event_store import DashboardEventStore
 from app.schemas.agent import AgentDecisionResponse, AgentSignalRequest
+from app.schemas.dashboard import DashboardEventKind
 from app.schemas.signal import SignalRequest
 from app.services.signal_service import SignalService
 
@@ -49,10 +51,12 @@ class AgentService:
         ai_client: AIDecisionClient,
         signal_service: SignalService,
         settings: Settings,
+        event_store: DashboardEventStore | None = None,
     ) -> None:
         self._ai = ai_client
         self._signal_service = signal_service
         self._settings = settings
+        self._event_store = event_store
 
     async def process(self, request: AgentSignalRequest) -> AgentDecisionResponse:
         """
@@ -69,6 +73,11 @@ class AgentService:
                 agent_output.reason,
                 source="ai_agent",
                 confidence=f"{agent_output.confidence:.2%}",
+            )
+            await self._emit_agent_dashboard(
+                request.primary_signal.symbol,
+                agent_output,
+                order_executed=False,
             )
             return AgentDecisionResponse(
                 agent_decision=AgentDecision.SKIP,
@@ -100,6 +109,14 @@ class AgentService:
             source="ai_agent",
             decision=agent_output.decision.value,
             effective_confidence=f"{effective_confidence:.2%}",
+        )
+
+        await self._emit_agent_dashboard(
+            request.primary_signal.symbol,
+            agent_output,
+            order_executed=None,
+            effective_confidence=effective_confidence,
+            size_multiplier=size_mult,
         )
 
         signal_req = self._build_signal_request(
@@ -162,4 +179,34 @@ class AgentService:
             price=ps.price,
             size_multiplier=effective_mult,
             metadata={**ps.metadata, "agent_decision": True},
+        )
+
+    async def _emit_agent_dashboard(
+        self,
+        symbol: str,
+        agent_output: AgentOutput,
+        order_executed: bool | None,
+        effective_confidence: float | None = None,
+        size_multiplier: float | None = None,
+    ) -> None:
+        if self._event_store is None:
+            return
+        detail: dict = {
+            "decision": agent_output.decision.value,
+            "confidence": agent_output.confidence,
+            "reason": agent_output.reason,
+        }
+        if effective_confidence is not None:
+            detail["effective_confidence"] = effective_confidence
+        if size_multiplier is not None:
+            detail["size_multiplier"] = size_multiplier
+        if order_executed is not None:
+            detail["order_executed"] = order_executed
+        title = f"AI {agent_output.decision.value}: {agent_output.reason[:72]}"
+        assert self._event_store is not None
+        await self._event_store.append_new(
+            kind=DashboardEventKind.AGENT,
+            symbol=symbol,
+            title=title,
+            detail=detail,
         )

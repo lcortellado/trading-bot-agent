@@ -18,6 +18,7 @@ from app.exchange.base import ExchangeClient
 from app.exchange.binance import BinanceClient
 from app.risk_management.risk_manager import RiskManager
 from app.services.market_data import MarketDataService
+from app.dashboard.event_store import DashboardEventStore
 from app.services.signal_service import SignalService
 from app.strategies.base import Strategy
 from app.strategies.sma_crossover import get_available_strategies
@@ -61,3 +62,8 @@ def get_signal_service(request: Request) -> SignalService:
 def get_agent_service(request: Request) -> AgentService:
     """Returns the singleton AgentService (wraps AIDecisionClient + SignalService)."""
     return request.app.state.agent_service
+
+
+def get_event_store(request: Request) -> DashboardEventStore:
+    """In-memory event feed used by the dashboard (singleton from lifespan)."""
+    return request.app.state.event_store

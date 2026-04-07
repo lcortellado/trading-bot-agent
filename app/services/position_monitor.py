@@ -17,7 +17,9 @@ from decimal import Decimal
 from app.core.logging import DecisionLogger, get_logger
 from app.domain.enums import OrderSide, OrderType
 from app.domain.models import Position
+from app.dashboard.event_store import DashboardEventStore
 from app.exchange.base import ExchangeClient
+from app.schemas.dashboard import DashboardEventKind
 from app.services.signal_service import SignalService
 
 log = get_logger(__name__)
@@ -39,10 +41,12 @@ class PositionMonitor:
         signal_service: SignalService,
         exchange: ExchangeClient,
         interval_seconds: int = 30,
+        event_store: DashboardEventStore | None = None,
     ) -> None:
         self._signal_service = signal_service
         self._exchange = exchange
         self._interval = interval_seconds
+        self._event_store = event_store
 
     async def run(self) -> None:
         log.info("PositionMonitor started | check_interval=%ds", self._interval)
@@ -104,6 +108,19 @@ class PositionMonitor:
                 close_price=str(current_price),
                 entry_price=str(position.entry_price),
             )
+            if self._event_store is not None:
+                await self._event_store.append_new(
+                    kind=DashboardEventKind.POSITION,
+                    symbol=position.symbol,
+                    title=f"Exit · {reason[:72]}",
+                    detail={
+                        "order_id": str(order.order_id),
+                        "side": position.side.value,
+                        "realized_pnl": str(pnl),
+                        "close_price": str(current_price),
+                        "entry_price": str(position.entry_price),
+                    },
+                )
         except Exception as exc:  # noqa: BLE001
             log.error(
                 "PositionMonitor: failed to close position %s: %s",
