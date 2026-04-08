@@ -135,7 +135,24 @@ class SmaCrossoverStrategy(Strategy):
 
 
 def get_available_strategies() -> dict[str, Strategy]:
-    """Registry of all available strategies. Add new strategies here."""
+    """
+    Registry of all strategies (used by /strategy, auto-trading, strategy lab).
+
+    Multiple SMA presets allow comparing fast vs default vs slow crossovers in paper lab.
+    """
+    presets: list[tuple[str, int, int, str]] = [
+        ("sma_crossover", 9, 21, "SMA 9/21 — default"),
+        ("sma_5_15", 5, 15, "SMA 5/15 — más reactivo"),
+        ("sma_13_34", 13, 34, "SMA 13/34 — más suave"),
+    ]
     return {
-        "sma_crossover": SmaCrossoverStrategy(),
+        name: SmaCrossoverStrategy(
+            SmaCrossoverConfig(
+                name=name,
+                description=desc,
+                short_period=short,
+                long_period=long,
+            )
+        )
+        for name, short, long, desc in presets
     }

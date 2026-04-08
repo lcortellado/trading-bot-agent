@@ -275,6 +275,11 @@ table.feed th {
   color: #c4b5fd;
 }
 
+.kind-compare {
+  background: rgba(46, 160, 140, 0.15);
+  color: #56d4b8;
+}
+
 .kind-strategy {
   background: #2d2a3d;
   color: #d2a8ff;
@@ -410,4 +415,62 @@ table.config-table tr {
 
 table.config-table tr:last-child {
   border-bottom: none;
+}
+
+.lab-subtitle {
+  font-size: 0.9rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.lab-table {
+  margin-bottom: 1.5rem;
+}
+
+.lab-why-empty {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.lab-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+
+.lab-status-warn {
+  color: var(--warn);
+}
+
+.lab-status strong {
+  color: var(--text);
+}
+
+.lab-controls {
+  margin-bottom: 1rem;
+}
+
+.lab-controls .forms-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 240px));
+  margin-bottom: 0.5rem;
+}
+
+.lab-chart-wrap {
+  margin-top: 0.5rem;
+}
+
+.chart-meta {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.lab-chart {
+  width: 100%;
+  min-height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }

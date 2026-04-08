@@ -8,6 +8,9 @@ export function AppHeader() {
         <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
           Panel
         </NavLink>
+        <NavLink to="/lab" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+          Laboratorio
+        </NavLink>
         <NavLink to="/config" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
           Configuración
         </NavLink>

@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.main import app
+from tests.conftest import make_settings
 
 _FRONTEND_INDEX = (
     Path(__file__).resolve().parent.parent.parent / "frontend" / "dist" / "index.html"
@@ -33,6 +35,27 @@ def test_dashboard_snapshot() -> None:
         assert "daily_pnl" in data
         assert data["open_positions"] == 0
         assert data["positions"] == []
+
+
+def test_dashboard_strategy_lab_response_when_disabled_in_settings() -> None:
+    """Override settings so the test is independent of STRATEGY_LAB_ENABLED in developer .env."""
+
+    def _settings_off() -> object:
+        return make_settings(strategy_lab_enabled=False)
+
+    app.dependency_overrides[get_settings] = _settings_off
+    try:
+        with TestClient(app) as client:
+            r = client.get("/api/dashboard/strategy-lab")
+            assert r.status_code == 200
+            data = r.json()
+            assert data["enabled"] is False
+            assert data["last_tick_at"] is None
+            assert data["tick_count"] == 0
+            assert data["rows"] == []
+            assert data["leaderboard"] == []
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
 
 
 def test_dashboard_public_config_no_secrets() -> None:
@@ -70,8 +93,9 @@ def test_signal_post_appends_dashboard_event() -> None:
         assert ev.status_code == 200
         rows = ev.json()["events"]
         assert len(rows) >= 1
-        latest = rows[0]
-        assert latest["kind"] == "signal"
+        signal_rows = [r for r in rows if r.get("kind") == "signal"]
+        assert signal_rows, "Expected at least one signal event in feed"
+        latest = signal_rows[0]
         assert latest["symbol"] == "BTCUSDT"
         assert latest["detail"]["strategy"] == "manual_test"
         assert latest["detail"]["confidence"] == 0.85

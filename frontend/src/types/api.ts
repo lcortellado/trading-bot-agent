@@ -1,6 +1,12 @@
 /** Mirrors backend JSON contracts (app/schemas + agents). */
 
-export type DashboardEventKind = 'agent' | 'signal' | 'position' | 'strategy' | 'auto'
+export type DashboardEventKind =
+  | 'agent'
+  | 'signal'
+  | 'position'
+  | 'strategy'
+  | 'auto'
+  | 'compare'
 
 export interface DashboardEvent {
   id: string
@@ -61,6 +67,83 @@ export interface DashboardPublicConfig {
   auto_trading_skip_if_open: boolean
   auto_trading_cooldown_seconds: number
   auto_trading_candle_limit: number
+  strategy_lab_enabled: boolean
+  strategy_lab_interval_seconds: number
+  strategy_lab_symbols: string
+  strategy_lab_timeframe: string
+  strategy_lab_strategy_names: string
+  strategy_lab_candle_limit: number
+  strategy_lab_notional_usd: number
+  strategy_lab_tp_multiplier: number
+  strategy_lab_sl_min_pct: number
+  strategy_lab_sl_max_pct: number
+  strategy_lab_use_combined_signals: boolean
+}
+
+export interface StrategyLabLaneRow {
+  strategy_name: string
+  description: string
+  symbol: string
+  realized_pnl: string
+  trades: number
+  wins: number
+  losses: number
+  in_position: boolean
+  stop_loss: string | null
+  take_profit: string | null
+  last_action: string | null
+  last_exit_reason: string | null
+  last_confidence: number | null
+}
+
+export interface StrategyLabLeaderboardRow {
+  strategy_name: string
+  description: string
+  total_pnl: string
+  total_trades: number
+  wins: number
+  losses: number
+}
+
+export interface StrategyLabSnapshot {
+  enabled: boolean
+  notional_usd: number
+  /** ISO UTC timestamp of last completed lab tick (null if never ran). */
+  last_tick_at: string | null
+  tick_count: number
+  rows: StrategyLabLaneRow[]
+  leaderboard: StrategyLabLeaderboardRow[]
+}
+
+export interface ChartCandlePoint {
+  time: number
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
+export interface ChartLinePoint {
+  time: number
+  value: number
+}
+
+export interface ChartCrossPoint {
+  time: number
+  side: 'buy' | 'sell'
+  price: number
+}
+
+export interface StrategyLabChartData {
+  symbol: string
+  timeframe: string
+  strategy_name: string
+  sma_short_period: number
+  sma_long_period: number
+  candles: ChartCandlePoint[]
+  sma_short: ChartLinePoint[]
+  sma_long: ChartLinePoint[]
+  crosses: ChartCrossPoint[]
 }
 
 export type SignalAction = 'buy' | 'sell' | 'hold'

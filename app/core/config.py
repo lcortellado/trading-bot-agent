@@ -82,6 +82,27 @@ class Settings(BaseSettings):
     )
     auto_trading_candle_limit: int = Field(default=120, ge=30, alias="AUTO_TRADING_CANDLE_LIMIT")
 
+    # Strategy lab — paper-only: run several strategies on the same candles; rank by simulated PnL
+    strategy_lab_enabled: bool = Field(default=False, alias="STRATEGY_LAB_ENABLED")
+    strategy_lab_interval_seconds: int = Field(default=300, ge=30, alias="STRATEGY_LAB_INTERVAL_SECONDS")
+    strategy_lab_symbols: str = Field(default="BTCUSDT", alias="STRATEGY_LAB_SYMBOLS")
+    strategy_lab_timeframe: str = Field(default="5m", alias="STRATEGY_LAB_TIMEFRAME")
+    strategy_lab_strategy_names: str = Field(
+        default="sma_crossover,sma_5_15,sma_13_34",
+        alias="STRATEGY_LAB_STRATEGIES",
+    )
+    strategy_lab_candle_limit: int = Field(default=120, ge=30, alias="STRATEGY_LAB_CANDLE_LIMIT")
+    strategy_lab_notional_usd: float = Field(default=1000.0, gt=0, alias="STRATEGY_LAB_NOTIONAL_USD")
+    # Exit model for lab lanes: TP distance = SL distance * multiplier.
+    # SL% is estimated from recent volatility and clamped to [min, max].
+    strategy_lab_tp_multiplier: float = Field(default=1.2, gt=0, alias="STRATEGY_LAB_TP_MULTIPLIER")
+    strategy_lab_sl_min_pct: float = Field(default=0.005, gt=0, alias="STRATEGY_LAB_SL_MIN_PCT")
+    strategy_lab_sl_max_pct: float = Field(default=0.02, gt=0, alias="STRATEGY_LAB_SL_MAX_PCT")
+    strategy_lab_use_combined_signals: bool = Field(
+        default=True,
+        alias="STRATEGY_LAB_USE_COMBINED_SIGNALS",
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

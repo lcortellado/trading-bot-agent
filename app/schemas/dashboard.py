@@ -2,7 +2,6 @@
 Pydantic models for dashboard API and in-memory event log.
 """
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
 from typing import Any
 
@@ -15,6 +14,7 @@ class DashboardEventKind(str, Enum):
     POSITION = "position"
     STRATEGY = "strategy"
     AUTO = "auto"
+    COMPARE = "compare"
 
 
 class DashboardEvent(BaseModel):
@@ -87,3 +87,86 @@ class DashboardPublicConfig(BaseModel):
     auto_trading_skip_if_open: bool
     auto_trading_cooldown_seconds: int
     auto_trading_candle_limit: int
+
+    strategy_lab_enabled: bool
+    strategy_lab_interval_seconds: int
+    strategy_lab_symbols: str
+    strategy_lab_timeframe: str
+    strategy_lab_strategy_names: str
+    strategy_lab_candle_limit: int
+    strategy_lab_notional_usd: float
+    strategy_lab_tp_multiplier: float
+    strategy_lab_sl_min_pct: float
+    strategy_lab_sl_max_pct: float
+    strategy_lab_use_combined_signals: bool
+
+
+class StrategyLabLaneRow(BaseModel):
+    """One paper-simulation lane: strategy × symbol."""
+
+    strategy_name: str
+    description: str
+    symbol: str
+    realized_pnl: str
+    trades: int
+    wins: int
+    losses: int
+    in_position: bool
+    stop_loss: str | None = None
+    take_profit: str | None = None
+    last_action: str | None = None
+    last_exit_reason: str | None = None
+    last_confidence: float | None = None
+
+
+class StrategyLabLeaderboardRow(BaseModel):
+    """Aggregated paper PnL per strategy (all symbols)."""
+
+    strategy_name: str
+    description: str
+    total_pnl: str
+    total_trades: int
+    wins: int
+    losses: int
+
+
+class StrategyLabSnapshot(BaseModel):
+    """Paper strategy comparison snapshot for GET /api/dashboard/strategy-lab."""
+
+    enabled: bool
+    notional_usd: float
+    last_tick_at: str | None = None
+    tick_count: int = 0
+    rows: list[StrategyLabLaneRow]
+    leaderboard: list[StrategyLabLeaderboardRow]
+
+
+class ChartCandlePoint(BaseModel):
+    time: int
+    open: float
+    high: float
+    low: float
+    close: float
+
+
+class ChartLinePoint(BaseModel):
+    time: int
+    value: float
+
+
+class ChartCrossPoint(BaseModel):
+    time: int
+    side: str  # "buy" | "sell"
+    price: float
+
+
+class StrategyLabChartData(BaseModel):
+    symbol: str
+    timeframe: str
+    strategy_name: str
+    sma_short_period: int
+    sma_long_period: int
+    candles: list[ChartCandlePoint]
+    sma_short: list[ChartLinePoint]
+    sma_long: list[ChartLinePoint]
+    crosses: list[ChartCrossPoint]

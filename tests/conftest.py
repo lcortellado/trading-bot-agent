@@ -25,6 +25,7 @@ def make_settings(**overrides) -> Settings:
         default_take_profit_pct=0.04,
         sma_short_period=3,
         sma_long_period=5,
+        strategy_lab_enabled=False,
     )
     defaults.update(overrides)
     return Settings(**defaults)

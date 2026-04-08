@@ -4,6 +4,7 @@ Wires up FastAPI, singleton services, background tasks, and startup/shutdown lif
 """
 import asyncio
 from contextlib import asynccontextmanager
+from decimal import Decimal
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -25,6 +26,7 @@ from app.services.auto_trading import AutoTradingLoop
 from app.services.market_data import MarketDataService
 from app.services.position_monitor import PositionMonitor
 from app.services.signal_service import SignalService
+from app.services.strategy_lab import StrategyLabLoop, StrategyLabRuntime
 from app.strategies.sma_crossover import get_available_strategies
 
 log = get_logger(__name__)
@@ -50,6 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.signal_service = signal_service
     app.state.agent_service = agent_service
     app.state.event_store = event_store
+    app.state.strategy_lab = None
 
     # ── Start position monitor background task ──────────────────────────────
     monitor = PositionMonitor(
@@ -61,6 +64,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     monitor_task = asyncio.create_task(monitor.run())
 
     auto_trading_task: asyncio.Task[None] | None = None
+    strategy_lab_task: asyncio.Task[None] | None = None
+    if settings.strategy_lab_enabled:
+        strategies_registry = get_available_strategies()
+        lab_runtime = StrategyLabRuntime(
+            notional_usd=Decimal(str(settings.strategy_lab_notional_usd)),
+        )
+        app.state.strategy_lab = lab_runtime
+        lab_loop = StrategyLabLoop(
+            settings=settings,
+            market_data=MarketDataService(exchange),
+            strategies=strategies_registry,
+            runtime=lab_runtime,
+            event_store=event_store,
+        )
+        strategy_lab_task = asyncio.create_task(lab_loop.run())
+        log.info(
+            "Strategy lab enabled | interval=%ds | symbols=%s | strategies=%s",
+            settings.strategy_lab_interval_seconds,
+            settings.strategy_lab_symbols,
+            settings.strategy_lab_strategy_names,
+        )
+
     if settings.auto_trading_enabled:
         market_data = MarketDataService(exchange)
         strategies = get_available_strategies()
@@ -112,6 +137,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         auto_trading_task.cancel()
         try:
             await auto_trading_task
+        except asyncio.CancelledError:
+            pass
+    if strategy_lab_task is not None:
+        strategy_lab_task.cancel()
+        try:
+            await strategy_lab_task
         except asyncio.CancelledError:
             pass
     await exchange.close()

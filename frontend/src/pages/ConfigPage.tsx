@@ -150,6 +150,25 @@ export function ConfigPage() {
                   ]}
                 />
               </div>
+
+              <div className="card">
+                <h3>Laboratorio (comparar estrategias en paper)</h3>
+                <ConfigTable
+                  rows={[
+                    { label: 'Activado', value: cfg.strategy_lab_enabled },
+                    { label: 'Intervalo (s)', value: cfg.strategy_lab_interval_seconds },
+                    { label: 'Símbolos', value: cfg.strategy_lab_symbols },
+                    { label: 'Timeframe', value: cfg.strategy_lab_timeframe },
+                    { label: 'Estrategias a comparar', value: cfg.strategy_lab_strategy_names },
+                    { label: 'Límite de velas', value: cfg.strategy_lab_candle_limit },
+                    { label: 'Notional simulado (USD)', value: cfg.strategy_lab_notional_usd },
+                    { label: 'TP multiplicador (R)', value: cfg.strategy_lab_tp_multiplier },
+                    { label: 'SL mínimo (%)', value: cfg.strategy_lab_sl_min_pct },
+                    { label: 'SL máximo (%)', value: cfg.strategy_lab_sl_max_pct },
+                    { label: 'Usar señal combinada', value: cfg.strategy_lab_use_combined_signals },
+                  ]}
+                />
+              </div>
             </div>
           )}
         </section>
