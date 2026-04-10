@@ -2,13 +2,14 @@
 AgentService — AI decision layer between signal input and order execution.
 
 Position in the flow:
-  API route → AgentService → AIDecisionClient → SignalService → RiskManager → Exchange
+  API route → AgentService → (optional NewsContextService) → AIDecisionClient → SignalService → RiskManager → Exchange
 
 Responsibilities:
   1. Build a structured AgentInput from the incoming signal bundle.
-  2. Ask AIDecisionClient for a synthesized decision (ENTER / SKIP / REDUCE_SIZE).
-  3. SKIP  → return immediately; exchange is never called.
-  4. ENTER / REDUCE_SIZE → forward to SignalService (which calls RiskManager as final gate).
+  2. Optionally attach RSS/CryptoPanic headlines when NEWS_CONTEXT_ENABLED.
+  3. Ask AIDecisionClient for a synthesized decision (ENTER / SKIP / REDUCE_SIZE).
+  4. SKIP  → return immediately; exchange is never called.
+  5. ENTER / REDUCE_SIZE → forward to SignalService (which calls RiskManager as final gate).
 
 The AI agent is an ADDITIONAL reasoning layer. RiskManager remains the last
 hard barrier for capital protection and is always run on ENTER/REDUCE_SIZE.
@@ -22,6 +23,7 @@ from app.agents.ai_client import AIDecisionClient
 from app.agents.schemas import (
     AgentDecision,
     AgentInput,
+    NewsHeadline,
     AgentOutput,
     MarketContext,
     RiskContext,
@@ -33,6 +35,7 @@ from app.dashboard.event_store import DashboardEventStore
 from app.schemas.agent import AgentDecisionResponse, AgentSignalRequest
 from app.schemas.dashboard import DashboardEventKind
 from app.schemas.signal import SignalRequest
+from app.services.news_context import NewsContextService
 from app.services.signal_service import SignalService
 
 log = get_logger(__name__)
@@ -52,18 +55,34 @@ class AgentService:
         signal_service: SignalService,
         settings: Settings,
         event_store: DashboardEventStore | None = None,
+        news_context: NewsContextService | None = None,
     ) -> None:
         self._ai = ai_client
         self._signal_service = signal_service
         self._settings = settings
         self._event_store = event_store
+        self._news_context = news_context
 
     async def process(self, request: AgentSignalRequest) -> AgentDecisionResponse:
         """
         Full agent pipeline:
-          build input → AI decide → log → (if not SKIP) forward to SignalService.
+          build input → optional news fetch → AI decide → log → (if not SKIP) forward to SignalService.
         """
         agent_input = self._build_agent_input(request)
+        headlines: list[NewsHeadline] = []
+        if self._news_context is not None and self._settings.news_context_enabled:
+            try:
+                headlines = await self._news_context.fetch_for_symbol(
+                    request.primary_signal.symbol
+                )
+            except Exception as exc:  # noqa: BLE001
+                log.warning(
+                    "News context unavailable for %s: %s",
+                    request.primary_signal.symbol,
+                    exc,
+                )
+                headlines = []
+            agent_input = agent_input.model_copy(update={"news_headlines": headlines})
         agent_output: AgentOutput = await self._ai.decide(agent_input)
 
         # ── SKIP: return immediately, no order ────────────────────────────────
@@ -78,6 +97,7 @@ class AgentService:
                 request.primary_signal.symbol,
                 agent_output,
                 order_executed=False,
+                news_headlines=headlines,
             )
             return AgentDecisionResponse(
                 agent_decision=AgentDecision.SKIP,
@@ -117,6 +137,7 @@ class AgentService:
             order_executed=None,
             effective_confidence=effective_confidence,
             size_multiplier=size_mult,
+            news_headlines=headlines,
         )
 
         signal_req = self._build_signal_request(
@@ -188,6 +209,7 @@ class AgentService:
         order_executed: bool | None,
         effective_confidence: float | None = None,
         size_multiplier: float | None = None,
+        news_headlines: list[NewsHeadline] | None = None,
     ) -> None:
         if self._event_store is None:
             return
@@ -202,6 +224,17 @@ class AgentService:
             detail["size_multiplier"] = size_multiplier
         if order_executed is not None:
             detail["order_executed"] = order_executed
+        if news_headlines:
+            detail["news_headlines"] = [
+                {
+                    "title": h.title,
+                    "source": h.source,
+                    "url": h.url,
+                    "published_at": h.published_at,
+                }
+                for h in news_headlines[:10]
+            ]
+            detail["news_count"] = len(news_headlines)
         title = f"AI {agent_output.decision.value}: {agent_output.reason[:72]}"
         assert self._event_store is not None
         await self._event_store.append_new(

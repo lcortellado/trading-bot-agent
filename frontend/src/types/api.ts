@@ -58,6 +58,8 @@ export interface DashboardPublicConfig {
   ai_timeout: number
   ai_anthropic_key_configured: boolean
   ai_openai_key_configured: boolean
+  news_context_enabled: boolean
+  news_cryptopanic_configured: boolean
   auto_trading_enabled: boolean
   auto_trading_interval_seconds: number
   auto_trading_symbols: string
@@ -84,6 +86,10 @@ export interface StrategyLabLaneRow {
   strategy_name: string
   description: string
   symbol: string
+  entry_price: string | null
+  mark_price: string | null
+  position_notional_usd: string | null
+  unrealized_pnl: string | null
   realized_pnl: string
   trades: number
   wins: number
@@ -197,6 +203,31 @@ export interface AgentDecisionResponse {
   agent_reason: string
   order_executed: boolean
   signal_response: SignalResponse | null
+}
+
+export interface AgentDebugHeadline {
+  title: string
+  source: string | null
+  url: string | null
+  published_at: string | null
+}
+
+export interface AgentDebugItem {
+  event_id: string
+  ts: string
+  symbol: string
+  decision: AgentDecision | null
+  confidence: number | null
+  reason: string | null
+  effective_confidence: number | null
+  size_multiplier: number | null
+  order_executed: boolean | null
+  news_count: number
+  news_headlines: AgentDebugHeadline[]
+}
+
+export interface AgentDebugRecentResponse {
+  events: AgentDebugItem[]
 }
 
 export interface RunStrategyResponse {

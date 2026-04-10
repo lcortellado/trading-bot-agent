@@ -78,6 +78,9 @@ class DashboardPublicConfig(BaseModel):
     ai_anthropic_key_configured: bool
     ai_openai_key_configured: bool
 
+    news_context_enabled: bool
+    news_cryptopanic_configured: bool
+
     auto_trading_enabled: bool
     auto_trading_interval_seconds: int
     auto_trading_symbols: str
@@ -107,6 +110,10 @@ class StrategyLabLaneRow(BaseModel):
     strategy_name: str
     description: str
     symbol: str
+    entry_price: str | None = None
+    mark_price: str | None = None
+    position_notional_usd: str | None = None
+    unrealized_pnl: str | None = None
     realized_pnl: str
     trades: int
     wins: int

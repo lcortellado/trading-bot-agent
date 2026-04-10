@@ -87,6 +87,8 @@ def _public_config_from_settings(settings: Settings) -> DashboardPublicConfig:
         ai_timeout=settings.ai_timeout,
         ai_anthropic_key_configured=bool(settings.ai_api_key.strip()),
         ai_openai_key_configured=bool(settings.openai_api_key.strip()),
+        news_context_enabled=settings.news_context_enabled,
+        news_cryptopanic_configured=bool(settings.cryptopanic_api_token.strip()),
         auto_trading_enabled=settings.auto_trading_enabled,
         auto_trading_interval_seconds=settings.auto_trading_interval_seconds,
         auto_trading_symbols=settings.auto_trading_symbols,
@@ -232,6 +234,14 @@ async def strategy_lab_dashboard(
     rows: list[StrategyLabLaneRow] = []
     for lane in sorted(runtime.all_lanes(), key=lambda l: (l.strategy_name, l.symbol)):
         desc = strategies.get(lane.strategy_name)
+        mark_price = runtime.get_last_price(lane.symbol)
+        entry_price = lane.entry_price
+        position_notional = settings.strategy_lab_notional_usd if lane.in_position else None
+        unrealized_pnl: str | None = None
+        if lane.in_position and entry_price is not None and mark_price is not None and entry_price != 0:
+            qty = settings.strategy_lab_notional_usd / float(entry_price)
+            pnl = (float(mark_price) - float(entry_price)) * qty
+            unrealized_pnl = f"{pnl:.6f}"
         rows.append(
             StrategyLabLaneRow(
                 strategy_name=lane.strategy_name,
@@ -241,6 +251,12 @@ async def strategy_lab_dashboard(
                     else ""
                 ),
                 symbol=lane.symbol,
+                entry_price=str(entry_price) if entry_price is not None else None,
+                mark_price=str(mark_price) if mark_price is not None else None,
+                position_notional_usd=(
+                    f"{position_notional:.2f}" if position_notional is not None else None
+                ),
+                unrealized_pnl=unrealized_pnl,
                 realized_pnl=str(lane.realized_pnl),
                 trades=lane.trades,
                 wins=lane.wins,

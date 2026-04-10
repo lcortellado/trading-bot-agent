@@ -428,6 +428,14 @@ table.config-table tr:last-child {
   margin-bottom: 1.5rem;
 }
 
+.lab-table-legend {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 0.65rem;
+  max-width: 48rem;
+  line-height: 1.45;
+}
+
 .lab-why-empty {
   border-left: 3px solid var(--accent);
   padding-left: 0.75rem;
@@ -473,4 +481,40 @@ table.config-table tr:last-child {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+}
+
+.debug-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.debug-news-list {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+}
+
+.debug-news-list li {
+  margin-bottom: 0.2rem;
+}
+
+.debug-news-list a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.debug-news-list a:hover {
+  text-decoration: underline;
+}
+
+.debug-news-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
 }

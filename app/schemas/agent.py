@@ -53,3 +53,28 @@ class AgentDecisionResponse(BaseModel):
     agent_reason: str
     order_executed: bool
     signal_response: SignalResponse | None = None
+
+
+class AgentDebugHeadline(BaseModel):
+    title: str
+    source: str | None = None
+    url: str | None = None
+    published_at: str | None = None
+
+
+class AgentDebugItem(BaseModel):
+    event_id: str
+    ts: str
+    symbol: str
+    decision: str | None = None
+    confidence: float | None = None
+    reason: str | None = None
+    effective_confidence: float | None = None
+    size_multiplier: float | None = None
+    order_executed: bool | None = None
+    news_count: int = 0
+    news_headlines: list[AgentDebugHeadline] = Field(default_factory=list)
+
+
+class AgentDebugRecentResponse(BaseModel):
+    events: list[AgentDebugItem]

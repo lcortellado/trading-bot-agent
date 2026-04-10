@@ -17,12 +17,13 @@ from app.agents.agent_service import (
     REDUCE_SIZE_MULTIPLIER,
 )
 from app.agents.ai_client import AIDecisionClient
-from app.agents.schemas import AgentDecision, AgentOutput
+from app.agents.schemas import AgentDecision, AgentOutput, NewsHeadline
 from app.domain.enums import OrderSide, OrderStatus, OrderType, SignalAction, Timeframe, TradingMode
 from app.domain.models import Order
 from app.risk_management.risk_manager import RiskManager
 from app.schemas.agent import AgentSignalRequest
 from app.schemas.signal import SignalRequest, SignalResponse
+from app.services.news_context import NewsContextService
 from app.services.signal_service import SignalService
 from tests.conftest import make_settings
 
@@ -75,6 +76,21 @@ def make_mock_ai_client(decision: AgentDecision, confidence: float = 0.8) -> Mag
         )
     )
     return client
+
+
+def make_mock_news_context(headline_title: str = "BTC ETF inflows rise") -> MagicMock:
+    svc = MagicMock(spec=NewsContextService)
+    svc.fetch_for_symbol = AsyncMock(
+        return_value=[
+            NewsHeadline(
+                title=headline_title,
+                source="test-feed",
+                url="https://example.com/news",
+                published_at="2026-04-09T10:00:00Z",
+            )
+        ]
+    )
+    return svc
 
 
 @pytest.mark.asyncio
@@ -170,3 +186,44 @@ async def test_ai_fallback_returns_skip() -> None:
     assert response.agent_decision == AgentDecision.SKIP
     assert not response.order_executed
     signal_service.process_signal.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_news_context_is_attached_when_enabled() -> None:
+    settings = make_settings(news_context_enabled=True)
+    ai_client = make_mock_ai_client(AgentDecision.SKIP)
+    signal_service = make_mock_signal_service(accepted=True)
+    news_service = make_mock_news_context()
+    service = AgentService(
+        ai_client,
+        signal_service,
+        settings,
+        news_context=news_service,
+    )
+
+    await service.process(make_agent_request())
+
+    news_service.fetch_for_symbol.assert_awaited_once_with("BTCUSDT")
+    ai_input = ai_client.decide.call_args[0][0]
+    assert len(ai_input.news_headlines) == 1
+    assert ai_input.news_headlines[0].title == "BTC ETF inflows rise"
+
+
+@pytest.mark.asyncio
+async def test_news_context_failure_does_not_block_decision() -> None:
+    settings = make_settings(news_context_enabled=True)
+    ai_client = make_mock_ai_client(AgentDecision.SKIP)
+    signal_service = make_mock_signal_service(accepted=True)
+    news_service = MagicMock(spec=NewsContextService)
+    news_service.fetch_for_symbol = AsyncMock(side_effect=RuntimeError("news down"))
+    service = AgentService(
+        ai_client,
+        signal_service,
+        settings,
+        news_context=news_service,
+    )
+
+    response = await service.process(make_agent_request())
+
+    assert response.agent_decision == AgentDecision.SKIP
+    ai_client.decide.assert_awaited_once()

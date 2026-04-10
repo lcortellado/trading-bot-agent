@@ -1,5 +1,7 @@
-import { apiGet } from './client'
+import { apiGet, apiPost } from './client'
 import type {
+  AgentDecisionResponse,
+  AgentDebugRecentResponse,
   DashboardEvent,
   DashboardPublicConfig,
   DashboardSnapshot,
@@ -35,4 +37,34 @@ export function fetchStrategyLabChart(params: {
 
 export function fetchEvents(limit = 200): Promise<{ events: DashboardEvent[] }> {
   return apiGet<{ events: DashboardEvent[] }>(`/api/dashboard/events?limit=${limit}`)
+}
+
+export function fetchAgentDebugRecent(limit = 20): Promise<AgentDebugRecentResponse> {
+  return apiGet<AgentDebugRecentResponse>(`/agent/debug/recent?limit=${limit}`)
+}
+
+export function createAgentDebugDemoEvent(): Promise<AgentDecisionResponse> {
+  const body = {
+    primary_signal: {
+      symbol: 'BTCUSDT',
+      timeframe: '1h',
+      action: 'buy',
+      strategy_name: 'manual_debug_seed',
+      confidence: 0.81,
+      reason: 'Seed debug event from dashboard view',
+      price: '50000',
+    },
+    signals: [
+      {
+        symbol: 'BTCUSDT',
+        timeframe: '1h',
+        action: 'buy',
+        strategy_name: 'manual_debug_seed',
+        confidence: 0.81,
+        reason: 'Seed debug event from dashboard view',
+        price: '50000',
+      },
+    ],
+  }
+  return apiPost<AgentDecisionResponse>('/agent/decide', body)
 }

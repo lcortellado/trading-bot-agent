@@ -24,6 +24,7 @@ from app.exchange.binance import BinanceClient
 from app.risk_management.risk_manager import RiskManager
 from app.services.auto_trading import AutoTradingLoop
 from app.services.market_data import MarketDataService
+from app.services.news_context import NewsContextService
 from app.services.position_monitor import PositionMonitor
 from app.services.signal_service import SignalService
 from app.services.strategy_lab import StrategyLabLoop, StrategyLabRuntime
@@ -45,8 +46,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         exchange, risk_manager, settings, event_store=event_store
     )
     ai_client = AIDecisionClient(settings)
+    news_context = NewsContextService(settings)
     agent_service = AgentService(
-        ai_client, signal_service, settings, event_store=event_store
+        ai_client,
+        signal_service,
+        settings,
+        event_store=event_store,
+        news_context=news_context,
     )
 
     app.state.signal_service = signal_service
@@ -111,6 +117,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             ai_on = bool(settings.openai_api_key)
         else:
             ai_on = bool(settings.ai_api_key)
+    if settings.news_context_enabled:
+        log.info(
+            "News context for AI enabled | timeout=%.1fs | headlines_cap=%s | cryptopanic=%s",
+            settings.news_context_timeout,
+            settings.news_context_max_headlines,
+            bool(settings.cryptopanic_api_token.strip()),
+        )
     log.info(
         "Starting %s v%s | mode=%s | ai_provider=%s | ai_ready=%s",
         settings.app_name,

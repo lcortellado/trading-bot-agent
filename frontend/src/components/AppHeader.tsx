@@ -14,6 +14,9 @@ export function AppHeader() {
         <NavLink to="/config" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
           Configuración
         </NavLink>
+        <NavLink to="/agent-debug" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+          Debug IA
+        </NavLink>
       </nav>
       <span className="meta">
         Paper / testnet ·{' '}

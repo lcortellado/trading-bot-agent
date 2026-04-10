@@ -28,6 +28,15 @@ class SignalFeature(BaseModel):
     reason: str
 
 
+class NewsHeadline(BaseModel):
+    """Single headline fetched from RSS or a news API — passed to the LLM as context."""
+
+    title: str
+    source: str | None = None
+    url: str | None = None
+    published_at: str | None = None
+
+
 class MarketContext(BaseModel):
     """Optional market enrichment passed to the agent."""
 
@@ -53,6 +62,10 @@ class AgentInput(BaseModel):
     signals: list[SignalFeature]
     market_context: MarketContext = Field(default_factory=MarketContext)
     risk_context: RiskContext
+    news_headlines: list[NewsHeadline] = Field(
+        default_factory=list,
+        description="Recent headlines (RSS / optional CryptoPanic); may be empty or stale",
+    )
 
 
 class AgentOutput(BaseModel):

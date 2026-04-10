@@ -10,6 +10,39 @@ function pnlClass(pnl: string): string {
   return n > 0 ? 'pnl-pos' : 'pnl-neg'
 }
 
+function pnlClassNullable(pnl: string | null): string {
+  if (!pnl) return ''
+  const n = parseFloat(pnl)
+  if (Number.isNaN(n) || n === 0) return ''
+  return n > 0 ? 'pnl-pos' : 'pnl-neg'
+}
+
+/** USD redondeado + % vs precio de entrada (solo posición abierta). */
+function formatUnrealizedPnl(
+  unrealizedUsd: string | null,
+  entryPrice: string | null,
+  markPrice: string | null,
+): string {
+  if (!unrealizedUsd) return '—'
+  const usd = parseFloat(unrealizedUsd)
+  if (Number.isNaN(usd)) return unrealizedUsd
+  const entry = parseFloat(entryPrice ?? '')
+  const mark = parseFloat(markPrice ?? '')
+  const usdPart = `${usd.toFixed(2)} USD`
+  if (!Number.isNaN(entry) && entry !== 0 && !Number.isNaN(mark)) {
+    const pct = ((mark - entry) / entry) * 100
+    const sign = pct > 0 ? '+' : ''
+    return `${usdPart} (${sign}${pct.toFixed(2)}%)`
+  }
+  return usdPart
+}
+
+function formatUsdRounded(value: string): string {
+  const n = parseFloat(value)
+  if (Number.isNaN(n)) return value
+  return `${n.toFixed(2)} USD`
+}
+
 export function LabPage() {
   const [data, setData] = useState<StrategyLabSnapshot | null>(null)
   const [chartData, setChartData] = useState<StrategyLabChartData | null>(null)
@@ -163,19 +196,29 @@ export function LabPage() {
                       <td>
                         {row.wins} / {row.losses}
                       </td>
-                      <td className={pnlClass(row.total_pnl)}>{row.total_pnl}</td>
+                      <td className={pnlClass(row.total_pnl)}>{formatUsdRounded(row.total_pnl)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
               <h3 className="lab-subtitle">Detalle por símbolo</h3>
+              <p className="lab-table-legend">
+                <strong>Colores:</strong> en <em>PnL activo</em>, verde = la posición abierta va ganando frente al precio
+                actual (no realizado). El valor se muestra en USD (2 decimales) y el porcentaje es el cambio del precio
+                actual respecto al precio de entrada. En <em>PnL cerrado</em>, verde/rojo = suma de operaciones ya
+                cerradas; puede ser negativo aunque el activo esté en verde.
+              </p>
               <table className="feed lab-table">
                 <thead>
                   <tr>
                     <th>Estrategia</th>
                     <th>Símbolo</th>
-                    <th>PnL</th>
+                    <th>Compra (entrada)</th>
+                    <th>Monto (USD)</th>
+                    <th>Precio actual</th>
+                    <th>PnL activo</th>
+                    <th>PnL cerrado</th>
                     <th>Ops</th>
                     <th>En posición</th>
                     <th>SL / TP</th>
@@ -190,7 +233,13 @@ export function LabPage() {
                         <code>{row.strategy_name}</code>
                       </td>
                       <td>{row.symbol}</td>
-                      <td className={pnlClass(row.realized_pnl)}>{row.realized_pnl}</td>
+                      <td>{row.entry_price ?? '—'}</td>
+                      <td>{row.position_notional_usd ?? '—'}</td>
+                      <td>{row.mark_price ?? '—'}</td>
+                      <td className={pnlClassNullable(row.unrealized_pnl)}>
+                        {formatUnrealizedPnl(row.unrealized_pnl, row.entry_price, row.mark_price)}
+                      </td>
+                      <td className={pnlClass(row.realized_pnl)}>{formatUsdRounded(row.realized_pnl)}</td>
                       <td>{row.trades}</td>
                       <td>{row.in_position ? 'Sí' : 'No'}</td>
                       <td>

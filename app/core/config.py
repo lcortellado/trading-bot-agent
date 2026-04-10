@@ -58,6 +58,16 @@ class Settings(BaseSettings):
     ai_timeout: int = 15                            # seconds; keep short to avoid blocking orders
     ai_enabled: bool = True                         # set False to bypass AI and use risk-only mode
 
+    # External news context for the AI agent (RSS + optional CryptoPanic API)
+    news_context_enabled: bool = Field(default=False, alias="NEWS_CONTEXT_ENABLED")
+    news_context_timeout: float = Field(default=6.0, gt=0, alias="NEWS_CONTEXT_TIMEOUT")
+    news_context_max_headlines: int = Field(default=12, ge=1, le=40, alias="NEWS_CONTEXT_MAX_HEADLINES")
+    cryptopanic_api_token: str = Field(default="", alias="CRYPTOPANIC_API_TOKEN")
+    news_rss_feed_urls: str = Field(
+        default="https://cointelegraph.com/rss",
+        alias="NEWS_RSS_FEEDS",
+    )
+
     # Position monitor
     position_monitor_interval: int = 30            # seconds between SL/TP checks
 

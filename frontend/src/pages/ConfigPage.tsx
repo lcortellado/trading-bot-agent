@@ -130,6 +130,8 @@ export function ConfigPage() {
                     { label: 'Timeout (s)', value: cfg.ai_timeout },
                     { label: 'Clave Anthropic configurada', value: cfg.ai_anthropic_key_configured },
                     { label: 'Clave OpenAI configurada', value: cfg.ai_openai_key_configured },
+                    { label: 'Contexto noticias para IA (RSS/CryptoPanic)', value: cfg.news_context_enabled },
+                    { label: 'CryptoPanic token configurado', value: cfg.news_cryptopanic_configured },
                   ]}
                 />
               </div>

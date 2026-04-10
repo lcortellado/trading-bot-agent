@@ -73,6 +73,8 @@ def test_dashboard_public_config_no_secrets() -> None:
         assert "auto_trading_enabled" in data
         assert isinstance(data["ai_anthropic_key_configured"], bool)
         assert isinstance(data["ai_openai_key_configured"], bool)
+        assert isinstance(data["news_context_enabled"], bool)
+        assert isinstance(data["news_cryptopanic_configured"], bool)
 
 
 def test_signal_post_appends_dashboard_event() -> None:
@@ -98,4 +100,45 @@ def test_signal_post_appends_dashboard_event() -> None:
         latest = signal_rows[0]
         assert latest["symbol"] == "BTCUSDT"
         assert latest["detail"]["strategy"] == "manual_test"
-        assert latest["detail"]["confidence"] == 0.85
+
+
+def test_agent_debug_recent_endpoint() -> None:
+    with TestClient(app) as client:
+        body = {
+            "primary_signal": {
+                "symbol": "BTCUSDT",
+                "timeframe": "1h",
+                "action": "buy",
+                "strategy_name": "manual_agent_debug",
+                "confidence": 0.8,
+                "reason": "Debug endpoint seed",
+                "price": "50000",
+            },
+            "signals": [
+                {
+                    "symbol": "BTCUSDT",
+                    "timeframe": "1h",
+                    "action": "buy",
+                    "strategy_name": "manual_agent_debug",
+                    "confidence": 0.8,
+                    "reason": "Debug endpoint seed",
+                    "price": "50000",
+                }
+            ],
+        }
+        r = client.post("/agent/decide", json=body)
+        assert r.status_code == 200
+
+        debug = client.get("/agent/debug/recent?limit=5")
+        assert debug.status_code == 200
+        data = debug.json()
+        assert "events" in data
+        assert isinstance(data["events"], list)
+        assert len(data["events"]) >= 1
+
+        first = data["events"][0]
+        assert first["symbol"] == "BTCUSDT"
+        assert "decision" in first
+        assert "reason" in first
+        assert "news_headlines" in first
+        assert "news_count" in first

@@ -168,6 +168,7 @@ class StrategyLabRuntime:
 
     notional_usd: Decimal
     _lanes: dict[str, PaperLane] = field(default_factory=dict)
+    _last_price_by_symbol: dict[str, Decimal] = field(default_factory=dict)
     last_tick_at: datetime | None = None
     tick_count: int = 0
 
@@ -179,6 +180,12 @@ class StrategyLabRuntime:
 
     def all_lanes(self) -> list[PaperLane]:
         return list(self._lanes.values())
+
+    def set_last_price(self, symbol: str, price: Decimal) -> None:
+        self._last_price_by_symbol[symbol.upper()] = price
+
+    def get_last_price(self, symbol: str) -> Decimal | None:
+        return self._last_price_by_symbol.get(symbol.upper())
 
 
 class StrategyLabLoop:
@@ -244,6 +251,7 @@ class StrategyLabLoop:
             last_close = candles[-1].close
             last_high = candles[-1].high
             last_low = candles[-1].low
+            self._runtime.set_last_price(symbol, last_close)
             closes = [c.close for c in candles]
             sl_pct = _estimate_sl_pct(closes, min_pct=self._sl_min, max_pct=self._sl_max)
             symbol_signals: list[Signal] = []
