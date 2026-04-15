@@ -2,14 +2,16 @@
 AgentService — AI decision layer between signal input and order execution.
 
 Position in the flow:
-  API route → AgentService → (optional NewsContextService) → AIDecisionClient → SignalService → RiskManager → Exchange
+  API route → AgentService → (optional NewsContextService) → (optional deterministic analysts)
+            → AIDecisionClient → SignalService → RiskManager → Exchange
 
 Responsibilities:
   1. Build a structured AgentInput from the incoming signal bundle.
   2. Optionally attach RSS/CryptoPanic headlines when NEWS_CONTEXT_ENABLED.
-  3. Ask AIDecisionClient for a synthesized decision (ENTER / SKIP / REDUCE_SIZE).
-  4. SKIP  → return immediately; exchange is never called.
-  5. ENTER / REDUCE_SIZE → forward to SignalService (which calls RiskManager as final gate).
+  3. When AGENT_ANALYSTS_ENABLED, attach deterministic analyst_summaries (no extra LLM).
+  4. Ask AIDecisionClient for a synthesized decision (ENTER / SKIP / REDUCE_SIZE).
+  5. SKIP  → return immediately; exchange is never called.
+  6. ENTER / REDUCE_SIZE → forward to SignalService (which calls RiskManager as final gate).
 
 The AI agent is an ADDITIONAL reasoning layer. RiskManager remains the last
 hard barrier for capital protection and is always run on ENTER/REDUCE_SIZE.
@@ -23,6 +25,7 @@ from app.agents.ai_client import AIDecisionClient
 from app.agents.schemas import (
     AgentDecision,
     AgentInput,
+    AnalystSummary,
     NewsHeadline,
     AgentOutput,
     MarketContext,
@@ -35,6 +38,7 @@ from app.dashboard.event_store import DashboardEventStore
 from app.schemas.agent import AgentDecisionResponse, AgentSignalRequest
 from app.schemas.dashboard import DashboardEventKind
 from app.schemas.signal import SignalRequest
+from app.services.agent_analyst_service import AgentAnalystService
 from app.services.news_context import NewsContextService
 from app.services.signal_service import SignalService
 
@@ -56,17 +60,19 @@ class AgentService:
         settings: Settings,
         event_store: DashboardEventStore | None = None,
         news_context: NewsContextService | None = None,
+        analyst_service: AgentAnalystService | None = None,
     ) -> None:
         self._ai = ai_client
         self._signal_service = signal_service
         self._settings = settings
         self._event_store = event_store
         self._news_context = news_context
+        self._analyst_service = analyst_service or AgentAnalystService()
 
     async def process(self, request: AgentSignalRequest) -> AgentDecisionResponse:
         """
         Full agent pipeline:
-          build input → optional news fetch → AI decide → log → (if not SKIP) forward to SignalService.
+          build input → optional news fetch → optional analysts → AI decide → log → (if not SKIP) forward.
         """
         agent_input = self._build_agent_input(request)
         headlines: list[NewsHeadline] = []
@@ -83,6 +89,14 @@ class AgentService:
                 )
                 headlines = []
             agent_input = agent_input.model_copy(update={"news_headlines": headlines})
+        if self._settings.agent_analysts_enabled:
+            summaries = self._analyst_service.build_summaries(
+                signals=agent_input.signals,
+                market_context=agent_input.market_context,
+                news_headlines=agent_input.news_headlines,
+            )
+            agent_input = agent_input.model_copy(update={"analyst_summaries": summaries})
+        analyst_snapshots: list[AnalystSummary] = list(agent_input.analyst_summaries)
         agent_output: AgentOutput = await self._ai.decide(agent_input)
 
         # ── SKIP: return immediately, no order ────────────────────────────────
@@ -98,6 +112,7 @@ class AgentService:
                 agent_output,
                 order_executed=False,
                 news_headlines=headlines,
+                analyst_summaries=analyst_snapshots,
             )
             return AgentDecisionResponse(
                 agent_decision=AgentDecision.SKIP,
@@ -138,6 +153,7 @@ class AgentService:
             effective_confidence=effective_confidence,
             size_multiplier=size_mult,
             news_headlines=headlines,
+            analyst_summaries=analyst_snapshots,
         )
 
         signal_req = self._build_signal_request(
@@ -210,6 +226,7 @@ class AgentService:
         effective_confidence: float | None = None,
         size_multiplier: float | None = None,
         news_headlines: list[NewsHeadline] | None = None,
+        analyst_summaries: list[AnalystSummary] | None = None,
     ) -> None:
         if self._event_store is None:
             return
@@ -235,6 +252,17 @@ class AgentService:
                 for h in news_headlines[:10]
             ]
             detail["news_count"] = len(news_headlines)
+        if analyst_summaries:
+            detail["analyst_summaries"] = [
+                {
+                    "analyst_id": s.analyst_id,
+                    "stance": s.stance,
+                    "score": s.score,
+                    "confidence": s.confidence,
+                    "drivers": s.drivers[:6],
+                }
+                for s in analyst_summaries
+            ]
         title = f"AI {agent_output.decision.value}: {agent_output.reason[:72]}"
         assert self._event_store is not None
         await self._event_store.append_new(

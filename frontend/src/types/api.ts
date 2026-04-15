@@ -212,6 +212,14 @@ export interface AgentDebugHeadline {
   published_at: string | null
 }
 
+export interface AgentDebugAnalystRow {
+  analyst_id: string
+  stance: string
+  score: number
+  confidence: number
+  drivers: string[]
+}
+
 export interface AgentDebugItem {
   event_id: string
   ts: string
@@ -224,6 +232,7 @@ export interface AgentDebugItem {
   order_executed: boolean | null
   news_count: number
   news_headlines: AgentDebugHeadline[]
+  analyst_summaries?: AgentDebugAnalystRow[]
 }
 
 export interface AgentDebugRecentResponse {

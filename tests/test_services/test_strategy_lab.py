@@ -50,7 +50,7 @@ def test_leaderboard_aggregates_two_symbols() -> None:
     lb = build_leaderboard(rt, strat)
     assert len(lb) == 1
     assert lb[0]["strategy_name"] == "s1"
-    assert lb[0]["total_pnl"] == "75"
+    assert lb[0]["total_pnl"] == "75.00"
     assert lb[0]["total_trades"] == 3
 
 

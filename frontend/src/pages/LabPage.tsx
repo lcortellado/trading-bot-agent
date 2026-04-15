@@ -3,6 +3,7 @@ import { fetchStrategyLab, fetchStrategyLabChart } from '../api/dashboardApi'
 import { StrategyLabChart } from '../components/StrategyLabChart'
 import type { StrategyLabChartData, StrategyLabSnapshot } from '../types/api'
 import { AppHeader } from '../components/AppHeader'
+import { formatReportDateTime } from '../lib/datetime'
 
 function pnlClass(pnl: string): string {
   const n = parseFloat(pnl)
@@ -161,7 +162,9 @@ export function LabPage() {
 
               <p className="lab-status">
                 Último ciclo:{' '}
-                <strong>{data.last_tick_at ? data.last_tick_at.replace('T', ' ').slice(0, 19) : '—'} UTC</strong>
+                <strong>
+                  {data.last_tick_at ? formatReportDateTime(data.last_tick_at) : '—'} (Paraguay)
+                </strong>
                 {' · '}
                 Ciclos completados: <strong>{data.tick_count}</strong>
                 {data.tick_count === 0 && (

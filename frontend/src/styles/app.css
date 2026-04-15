@@ -295,6 +295,46 @@ table.feed th {
   overflow: auto;
 }
 
+.compare-detail {
+  margin-top: 0.45rem;
+}
+
+.compare-resumen {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 52rem;
+}
+
+table.compare-ranking {
+  width: 100%;
+  max-width: 42rem;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
+}
+
+table.compare-ranking th,
+table.compare-ranking td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+table.compare-ranking th {
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.compare-desc {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .empty {
   color: var(--muted);
   padding: 1rem 0;
@@ -517,4 +557,291 @@ table.config-table tr:last-child {
 .debug-news-meta {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+/* —— Agent deterministic analysts (dashboard section + feed) —— */
+.analyst-section-block {
+  margin-bottom: 0.5rem;
+}
+
+.analyst-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.analyst-section-intro {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 48rem;
+  margin: 0 0 0.75rem;
+}
+
+.analyst-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.analyst-run-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  background: var(--panel);
+}
+
+.analyst-run-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.analyst-run-time {
+  color: var(--muted);
+}
+
+.analyst-run-symbol {
+  font-weight: 600;
+}
+
+.analyst-run-decision {
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.analyst-run-conf {
+  color: var(--muted);
+}
+
+.analyst-run-reason {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.analyst-run-reason-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.analyst-run-sub {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.analyst-card-hint {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.analyst-card-hint-compact {
+  font-size: 0.65rem;
+  margin-bottom: 0.25rem;
+}
+
+.analyst-human-line {
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.analyst-human-line-compact {
+  font-size: 0.68rem;
+  margin-bottom: 0.2rem;
+}
+
+.analyst-human-muted {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.agent-feed-sub {
+  margin: 0.35rem 0 0.2rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.agent-feed-reason-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.analyst-drivers-compact {
+  margin-top: 0.2rem;
+  font-size: 0.62rem;
+}
+
+.debug-analyst-one-liner {
+  margin: 0.2rem 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.debug-analyst-driver {
+  margin: 0;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.debug-reason-wrap {
+  max-width: 22rem;
+  line-height: 1.4;
+  font-size: 0.8rem;
+}
+
+.debug-conf-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.analyst-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.analyst-cards-inline {
+  margin-top: 0.35rem;
+}
+
+.analyst-card {
+  flex: 1 1 10rem;
+  min-width: 9.5rem;
+  max-width: 16rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  background: var(--bg);
+}
+
+.analyst-card-compact {
+  max-width: 11rem;
+  min-width: 8rem;
+  font-size: 0.72rem;
+}
+
+.analyst-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.analyst-card-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.analyst-card-metrics {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.analyst-drivers {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.analyst-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.analyst-stance {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.analyst-stance-bullish {
+  background: rgba(86, 212, 184, 0.15);
+  color: #56d4b8;
+}
+
+.analyst-stance-bearish {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+.analyst-stance-neutral {
+  background: var(--border);
+  color: var(--muted);
+}
+
+.analyst-stance-mixed {
+  background: rgba(250, 204, 21, 0.12);
+  color: #facc15;
+}
+
+.agent-feed-detail {
+  margin-top: 0.35rem;
+}
+
+.agent-feed-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.agent-feed-decision {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.agent-feed-conf {
+  color: var(--muted);
+}
+
+.agent-feed-reason {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.text-muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.debug-analyst-cell {
+  vertical-align: top;
+  max-width: 15rem;
+}
+
+.analyst-cards-debug {
+  flex-direction: column;
+  flex-wrap: nowrap;
 }

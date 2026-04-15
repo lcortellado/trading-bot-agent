@@ -62,6 +62,14 @@ class AgentDebugHeadline(BaseModel):
     published_at: str | None = None
 
 
+class AgentDebugAnalystRow(BaseModel):
+    analyst_id: str
+    stance: str
+    score: float
+    confidence: float
+    drivers: list[str] = Field(default_factory=list)
+
+
 class AgentDebugItem(BaseModel):
     event_id: str
     ts: str
@@ -74,6 +82,7 @@ class AgentDebugItem(BaseModel):
     order_executed: bool | None = None
     news_count: int = 0
     news_headlines: list[AgentDebugHeadline] = Field(default_factory=list)
+    analyst_summaries: list[AgentDebugAnalystRow] = Field(default_factory=list)
 
 
 class AgentDebugRecentResponse(BaseModel):

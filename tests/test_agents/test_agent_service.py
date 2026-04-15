@@ -207,6 +207,23 @@ async def test_news_context_is_attached_when_enabled() -> None:
     ai_input = ai_client.decide.call_args[0][0]
     assert len(ai_input.news_headlines) == 1
     assert ai_input.news_headlines[0].title == "BTC ETF inflows rise"
+    assert len(ai_input.analyst_summaries) == 3
+    assert {s.analyst_id for s in ai_input.analyst_summaries} == {
+        "signal_consensus",
+        "market_context",
+        "news_digest",
+    }
+
+
+@pytest.mark.asyncio
+async def test_analyst_summaries_disabled_empty() -> None:
+    settings = make_settings(news_context_enabled=False, agent_analysts_enabled=False)
+    ai_client = make_mock_ai_client(AgentDecision.SKIP)
+    signal_service = make_mock_signal_service()
+    service = AgentService(ai_client, signal_service, settings)
+    await service.process(make_agent_request())
+    ai_input = ai_client.decide.call_args[0][0]
+    assert ai_input.analyst_summaries == []
 
 
 @pytest.mark.asyncio

@@ -23,6 +23,21 @@ from app.strategies.base import Strategy
 log = get_logger(__name__)
 
 
+def _format_usd_pnl(pnl: Decimal) -> str:
+    """PnL para UI/API: 2 decimales, sin cola infinita de dígitos."""
+    return format(pnl.quantize(Decimal("0.01")), "f")
+
+
+def _lab_signal_line_es(summary: str) -> str:
+    """Convierte 'estrategia:SIMBOLO:buy|sell' en texto legible para el feed."""
+    parts = summary.split(":", 2)
+    if len(parts) != 3:
+        return summary
+    strat, sym, act = parts
+    verb = {"buy": "compra", "sell": "venta", "hold": "hold"}.get(act.lower(), act)
+    return f"{sym}: {strat} → {verb}"
+
+
 @dataclass
 class PaperLane:
     strategy_name: str
@@ -354,17 +369,35 @@ class StrategyLabLoop:
         leaderboard = build_leaderboard(self._runtime, self._strategies)
         top = leaderboard[0] if leaderboard else None
         title = (
-            f"Lab · mejor PnL: {top['strategy_name']} ({top['total_pnl']})"
+            f"Lab · líder: {top['strategy_name']} · PnL cerrado {top['total_pnl']} USD"
             if top
-            else "Lab · ciclo (sin señales BUY/SELL)"
+            else "Lab · ciclo (sin datos en el ranking)"
         )
+        signals_readable = [_lab_signal_line_es(s) for s in summaries[:50]]
+        resumen_ciclo = (
+            "Ninguna señal de compra o venta en este ciclo del laboratorio."
+            if not signals_readable
+            else "Señales este ciclo: " + "; ".join(signals_readable)
+        )
+        ranking_top3 = [
+            {
+                "puesto": i,
+                "estrategia": row["strategy_name"],
+                "descripcion": row["description"],
+                "pnl_usd": row["total_pnl"],
+                "operaciones": row["total_trades"],
+                "ganadas": row["wins"],
+                "perdidas": row["losses"],
+            }
+            for i, row in enumerate(leaderboard[:3], start=1)
+        ]
         await self._event_store.append_new(
             kind=DashboardEventKind.COMPARE,
             symbol=self._symbols[0] if self._symbols else "—",
             title=title[:120],
             detail={
-                "signals_this_tick": summaries[:50],
-                "leaderboard_top3": leaderboard[:3],
+                "resumen_ciclo": resumen_ciclo,
+                "ranking_top3": ranking_top3,
             },
         )
 
@@ -403,7 +436,7 @@ def build_leaderboard(
             {
                 "strategy_name": str(agg["strategy_name"]),
                 "description": str(agg["description"]),
-                "total_pnl": format(pnl, "f"),
+                "total_pnl": _format_usd_pnl(pnl),
                 "total_trades": int(agg["total_trades"]),
                 "wins": int(agg["wins"]),
                 "losses": int(agg["losses"]),

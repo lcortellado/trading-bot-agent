@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     ai_timeout: int = 15                            # seconds; keep short to avoid blocking orders
     ai_enabled: bool = True                         # set False to bypass AI and use risk-only mode
 
+    # Deterministic analysts (signal consensus, market snapshot, news lexicon) → AgentInput
+    agent_analysts_enabled: bool = Field(default=True, alias="AGENT_ANALYSTS_ENABLED")
+
     # External news context for the AI agent (RSS + optional CryptoPanic API)
     news_context_enabled: bool = Field(default=False, alias="NEWS_CONTEXT_ENABLED")
     news_context_timeout: float = Field(default=6.0, gt=0, alias="NEWS_CONTEXT_TIMEOUT")

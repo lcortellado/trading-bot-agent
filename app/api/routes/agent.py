@@ -16,6 +16,7 @@ from app.agents.agent_service import AgentService
 from app.api.deps import get_agent_service, get_event_store
 from app.dashboard.event_store import DashboardEventStore
 from app.schemas.agent import (
+    AgentDebugAnalystRow,
     AgentDebugHeadline,
     AgentDebugItem,
     AgentDebugRecentResponse,
@@ -88,6 +89,36 @@ async def agent_debug_recent(
                     )
                 )
 
+        raw_analysts = detail.get("analyst_summaries")
+        analyst_rows: list[AgentDebugAnalystRow] = []
+        if isinstance(raw_analysts, list):
+            for item in raw_analysts:
+                if not isinstance(item, dict):
+                    continue
+                aid = item.get("analyst_id")
+                stance = item.get("stance")
+                if not isinstance(aid, str) or not isinstance(stance, str):
+                    continue
+                sc = item.get("score")
+                cf = item.get("confidence")
+                if not isinstance(sc, (int, float)) or not isinstance(cf, (int, float)):
+                    continue
+                dr = item.get("drivers")
+                drivers: list[str] = []
+                if isinstance(dr, list):
+                    for d in dr:
+                        if isinstance(d, str) and d.strip():
+                            drivers.append(d)
+                analyst_rows.append(
+                    AgentDebugAnalystRow(
+                        analyst_id=aid.strip(),
+                        stance=stance.strip(),
+                        score=float(sc),
+                        confidence=float(cf),
+                        drivers=drivers[:12],
+                    )
+                )
+
         rows.append(
             AgentDebugItem(
                 event_id=ev.id,
@@ -113,6 +144,7 @@ async def agent_debug_recent(
                 if isinstance(detail.get("news_count"), int)
                 else len(headlines),
                 news_headlines=headlines,
+                analyst_summaries=analyst_rows,
             )
         )
         if len(rows) >= limit:

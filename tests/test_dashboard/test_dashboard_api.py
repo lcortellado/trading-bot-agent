@@ -142,3 +142,13 @@ def test_agent_debug_recent_endpoint() -> None:
         assert "reason" in first
         assert "news_headlines" in first
         assert "news_count" in first
+        assert "analyst_summaries" in first
+        assert isinstance(first["analyst_summaries"], list)
+        if get_settings().agent_analysts_enabled and len(first["analyst_summaries"]) >= 1:
+            row0 = first["analyst_summaries"][0]
+            assert row0.get("analyst_id") in (
+                "signal_consensus",
+                "market_context",
+                "news_digest",
+            )
+            assert "stance" in row0 and "score" in row0

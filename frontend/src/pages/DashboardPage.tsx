@@ -4,6 +4,7 @@ import type { DashboardSnapshot } from '../types/api'
 import { AppHeader } from '../components/AppHeader'
 import { StatsBar } from '../components/StatsBar'
 import { EventFeed } from '../components/EventFeed'
+import { AgentAnalystSection } from '../components/AgentAnalystSection'
 import { SignalForm } from '../components/SignalForm'
 import { AgentForm } from '../components/AgentForm'
 import { StrategyForm } from '../components/StrategyForm'
@@ -43,6 +44,8 @@ export function DashboardPage() {
             <StrategyForm onDone={onAction} />
           </div>
         </section>
+
+        <AgentAnalystSection refreshToken={feedRefreshToken} />
 
         <section className="block">
           <h2>Actividad reciente</h2>

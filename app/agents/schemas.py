@@ -53,6 +53,32 @@ class RiskContext(BaseModel):
     daily_pnl: float
 
 
+class AnalystSummary(BaseModel):
+    """
+    Deterministic pre-LLM view from one logical analyst (no extra API calls).
+    The fusion model must weigh these summaries against raw signals and headlines.
+    """
+
+    analyst_id: str = Field(..., min_length=1, max_length=64)
+    stance: str = Field(
+        ...,
+        description="bullish | bearish | neutral | mixed",
+    )
+    score: float = Field(
+        ...,
+        ge=-1.0,
+        le=1.0,
+        description="Signed alignment: -1 bearish, +1 bullish",
+    )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="How decisive this analyst's inputs were",
+    )
+    drivers: list[str] = Field(default_factory=list, max_length=12)
+
+
 class AgentInput(BaseModel):
     """Full structured bundle sent to the AI model as JSON."""
 
@@ -65,6 +91,10 @@ class AgentInput(BaseModel):
     news_headlines: list[NewsHeadline] = Field(
         default_factory=list,
         description="Recent headlines (RSS / optional CryptoPanic); may be empty or stale",
+    )
+    analyst_summaries: list[AnalystSummary] = Field(
+        default_factory=list,
+        description="Server-side deterministic analysts; use as structured priors, not sole authority",
     )
 
 

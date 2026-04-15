@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { createAgentDebugDemoEvent, fetchAgentDebugRecent } from '../api/dashboardApi'
 import type { AgentDebugItem } from '../types/api'
 import { AppHeader } from '../components/AppHeader'
-
-function formatTs(ts: string): string {
-  const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return ts
-  return d.toLocaleString()
-}
+import { formatReportDateTime } from '../lib/datetime'
+import {
+  analystTitleEs,
+  decisionLabelEs,
+  humanizeDriverLine,
+  scorePlainEs,
+  stanceLabelEs,
+} from '../lib/agentHumanize'
 
 function decisionClass(decision: string | null): string {
   if (decision === 'ENTER') return 'pnl-pos'
@@ -18,6 +20,14 @@ function decisionClass(decision: string | null): string {
 function formatPct(v: number | null): string {
   if (v === null || Number.isNaN(v)) return '—'
   return `${(v * 100).toFixed(2)}%`
+}
+
+function stanceClassName(stance: string): string {
+  const s = stance.toLowerCase()
+  if (s === 'bullish') return 'analyst-stance analyst-stance-bullish'
+  if (s === 'bearish') return 'analyst-stance analyst-stance-bearish'
+  if (s === 'mixed') return 'analyst-stance analyst-stance-mixed'
+  return 'analyst-stance analyst-stance-neutral'
 }
 
 export function AgentDebugPage() {
@@ -43,7 +53,9 @@ export function AgentDebugPage() {
     setSeedMsg(null)
     createAgentDebugDemoEvent()
       .then((res) => {
-        setSeedMsg(`Evento creado: ${res.agent_decision} (${(res.agent_confidence * 100).toFixed(1)}%)`)
+        setSeedMsg(
+          `Listo: la IA eligió «${decisionLabelEs(res.agent_decision)}» con convicción ${(res.agent_confidence * 100).toFixed(0)}%.`,
+        )
         load()
       })
       .catch((e: Error) => setErr(e.message))
@@ -63,7 +75,7 @@ export function AgentDebugPage() {
       <main className="layout">
         <section className="block">
           <div className="debug-toolbar">
-            <h2>Debug IA (decisiones + noticias)</h2>
+            <h2>Historial de la IA (legible)</h2>
             <div className="debug-actions">
               <button className="btn btn-secondary btn-small" onClick={load}>
                 Recargar
@@ -74,8 +86,9 @@ export function AgentDebugPage() {
             </div>
           </div>
           <p className="lab-table-legend">
-            Muestra los ultimos eventos del endpoint <code>/agent/debug/recent</code> para verificar la decision de la IA
-            y los titulares usados como contexto.
+            Aquí ves las últimas veces que el bot pidió opinión a la IA: qué decidió, con qué convicción, qué titulares
+            vio si las noticias están activas y los tres resúmenes automáticos en palabras sencillas. Horas en{' '}
+            <strong>America/Asuncion</strong> (Paraguay).
           </p>
 
           {err && <div className="alert alert-error">No se pudo cargar debug IA: {err}</div>}
@@ -89,28 +102,60 @@ export function AgentDebugPage() {
                 <tr>
                   <th>Hora</th>
                   <th>Simbolo</th>
-                  <th>Decision</th>
-                  <th>Confianza</th>
-                  <th>Exec</th>
-                  <th>Noticias</th>
-                  <th>Razon / Titulares</th>
+                  <th>Qué decidió la IA</th>
+                  <th>Convicción</th>
+                  <th>¿Se ejecutó orden?</th>
+                  <th>Titulares</th>
+                  <th>Lecturas automáticas</th>
+                  <th>Explicación y noticias</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.event_id}>
-                    <td>{formatTs(r.ts)}</td>
+                    <td>{formatReportDateTime(r.ts)}</td>
                     <td>{r.symbol}</td>
-                    <td className={decisionClass(r.decision)}>{r.decision ?? '—'}</td>
+                    <td className={decisionClass(r.decision)}>{decisionLabelEs(r.decision)}</td>
                     <td>
-                      base: {formatPct(r.confidence)}
+                      <span className="debug-conf-label">Declarada:</span> {formatPct(r.confidence)}
                       <br />
-                      eff: {formatPct(r.effective_confidence)}
+                      <span className="debug-conf-label">Tras ajustes:</span>{' '}
+                      {formatPct(r.effective_confidence)}
                     </td>
-                    <td>{r.order_executed === null ? '—' : r.order_executed ? 'Si' : 'No'}</td>
-                    <td>{r.news_count}</td>
                     <td>
-                      <div>{r.reason ?? '—'}</div>
+                      {r.order_executed === null
+                        ? '—'
+                        : r.order_executed
+                          ? 'Sí (pasó riesgo)'
+                          : 'No (riesgo u otro motivo)'}
+                    </td>
+                    <td>{r.news_count === 0 ? 'Ninguno' : `${r.news_count} titular(es)`}</td>
+                    <td className="debug-analyst-cell">
+                      {(r.analyst_summaries ?? []).length === 0 ? (
+                        <span className="text-muted">—</span>
+                      ) : (
+                        <div className="analyst-cards analyst-cards-debug">
+                          {(r.analyst_summaries ?? []).map((a) => (
+                            <div key={`${r.event_id}-${a.analyst_id}`} className="analyst-card analyst-card-compact">
+                              <div className="analyst-card-head">
+                                <span className="analyst-card-title" title={a.analyst_id}>
+                                  {analystTitleEs(a.analyst_id)}
+                                </span>
+                                <span className={stanceClassName(a.stance)}>{stanceLabelEs(a.stance)}</span>
+                              </div>
+                              <p className="debug-analyst-one-liner">{scorePlainEs(a.score, a.stance)}</p>
+                              {a.drivers[0] ? (
+                                <p className="debug-analyst-driver">{humanizeDriverLine(a.drivers[0])}</p>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="debug-reason-wrap">
+                        <span className="debug-conf-label">Motivo de la IA:</span> {r.reason ?? '—'}
+                      </div>
                       {r.news_headlines.length > 0 && (
                         <ul className="debug-news-list">
                           {r.news_headlines.map((h, i) => (
